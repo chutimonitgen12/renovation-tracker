@@ -1,0 +1,2412 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ระบบสรุปและติดตามงานช่างรีโนเวทบ้าน | Renovation & Technician Work Tracker</title>
+
+  <!-- Google Fonts: Prompt & Sarabun -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Font Awesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Prompt', 'Sarabun', 'sans-serif'],
+            body: ['Sarabun', 'Prompt', 'sans-serif']
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    html, body {
+      font-family: 'Prompt', 'Sarabun', sans-serif;
+      background-color: #F8FAFC;
+      overflow-x: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* Clean Print Styles for PDF Export */
+    @media print {
+      body {
+        background: #ffffff !important;
+        color: #0f172a !important;
+        font-size: 12px !important;
+      }
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+      main {
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: 100% !important;
+      }
+      #dashboard-section, #tab-panel-1, #tab-panel-2, #tab-panel-3 {
+        display: none !important;
+      }
+      #print-report-container {
+        display: block !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-[#F8FAFC] text-slate-800 min-h-screen flex flex-col">
+
+  <!-- Shared Autocomplete Suggestions -->
+  <datalist id="inspector-list">
+    <option value="ชุติมณฑน์"></option>
+    <option value="ปลา"></option>
+    <option value="พี่โอ๋"></option>
+    <option value="พี่มุก"></option>
+  </datalist>
+  <datalist id="technician-list">
+    <option value="ช่างสมชาย (ชุดปูน/กระเบื้อง)"></option>
+    <option value="ช่างวิชัย (ชุดสี/ฝ้า)"></option>
+    <option value="ช่างเอก (ชุดไฟฟ้า)"></option>
+    <option value="ช่างบอย (ชุดประปา)"></option>
+    <option value="ช่างนพ (ชุดไม้/บิวท์อิน)"></option>
+  </datalist>
+
+  <!-- ========================================================= -->
+  <!-- 1. STICKY HEADER BAR                                      -->
+  <!-- ========================================================= -->
+  <header class="bg-white/95 backdrop-blur border-b border-slate-200 sticky top-0 z-30 shadow-sm no-print">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <!-- Brand -->
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-teal-500 text-white flex items-center justify-center shadow-md shadow-indigo-100 shrink-0">
+            <i class="fa-solid fa-house-chimney-crack text-lg"></i>
+          </div>
+          <div class="min-w-0">
+            <h1 class="text-base sm:text-lg font-bold text-slate-900 leading-tight truncate">ระบบสรุปงานช่างรีโนเวท</h1>
+            <p class="text-xs text-slate-500 truncate">Renovation & Technician Work Tracker</p>
+          </div>
+        </div>
+
+        <!-- Project Selector & Controls -->
+        <div class="flex flex-wrap items-center gap-2 min-w-0">
+          <div class="flex items-center gap-1.5 bg-slate-100 rounded-xl px-2.5 py-1.5 min-w-0 max-w-full sm:max-w-[260px]">
+            <span class="text-xs font-semibold text-slate-500 shrink-0">โครงการ:</span>
+            <select id="project-selector" onchange="handleProjectChange(this.value)" class="w-full min-w-0 bg-white text-slate-800 text-xs sm:text-sm font-medium rounded-lg px-2 py-1 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 truncate"></select>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button type="button" onclick="openProjectModal('add')" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-sm" title="เพิ่มโครงการใหม่">
+              <i class="fa-solid fa-plus text-[11px]"></i>
+              <span>โครงการ</span>
+            </button>
+            <button type="button" onclick="openProjectModal('edit')" class="p-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-indigo-600 transition" title="แก้ไขโครงการนี้">
+              <i class="fa-regular fa-pen-to-square text-sm"></i>
+            </button>
+            <button type="button" onclick="confirmDeleteProject()" class="p-2 rounded-xl bg-white border border-slate-200 text-rose-500 hover:bg-rose-50 transition" title="ลบโครงการนี้">
+              <i class="fa-regular fa-trash-can text-sm"></i>
+            </button>
+            <button type="button" onclick="openZonesModal()" class="px-3 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold transition flex items-center gap-1.5">
+              <i class="fa-solid fa-layer-group text-xs"></i>
+              <span>จัดการโซน</span>
+            </button>
+            <button type="button" onclick="openSettingsModal()" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition flex items-center gap-1.5">
+              <i class="fa-solid fa-gear text-xs"></i>
+              <span class="hidden sm:inline">ตั้งค่า</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================================= -->
+  <!-- 2. MAIN CONTENT                                           -->
+  <!-- ========================================================= -->
+  <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6 flex-1 space-y-6">
+
+    <!-- ======================================================= -->
+    <!-- OVERVIEW DASHBOARD                                      -->
+    <!-- ======================================================= -->
+    <section id="dashboard-section" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6 space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 id="dash-project-name" class="text-lg sm:text-xl font-bold text-slate-900">ชื่อโครงการ</h2>
+            <span id="dash-project-location" class="text-xs px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-medium border border-indigo-100"></span>
+          </div>
+          <p id="dash-project-note" class="text-xs sm:text-sm text-slate-500 mt-0.5"></p>
+        </div>
+        <div class="flex items-baseline gap-2 sm:text-right shrink-0">
+          <span class="text-xs text-slate-500">ความคืบหน้าโครงการ</span>
+          <span id="dash-progress-percent" class="text-2xl sm:text-3xl font-bold text-indigo-600">0%</span>
+        </div>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+        <div id="dash-progress-bar" class="bg-gradient-to-r from-indigo-600 via-blue-500 to-emerald-500 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+      </div>
+
+      <!-- 6 Status Summary Cards (Clickable to Filter Tab 3) -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 pt-1">
+        <button type="button" onclick="jumpToChecklist('survey')" class="text-left p-3 rounded-xl bg-indigo-50/80 border border-indigo-200 hover:border-indigo-400 hover:shadow-sm transition">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-semibold text-indigo-800 leading-tight">รวมรายการสำรวจหน้างาน (แสดงโชว์)</span>
+            <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 shrink-0"></span>
+          </div>
+          <span id="stat-survey" class="text-2xl font-bold text-indigo-700">0</span>
+        </button>
+
+        <button type="button" onclick="jumpToChecklist('pending')" class="text-left p-3 rounded-xl bg-slate-50 border border-slate-200 hover:border-slate-400 hover:shadow-sm transition">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-semibold text-slate-600 truncate">รอดำเนินการ</span>
+            <span class="w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0"></span>
+          </div>
+          <span id="stat-pending" class="text-2xl font-bold text-slate-800">0</span>
+        </button>
+
+        <button type="button" onclick="jumpToChecklist('in_progress')" class="text-left p-3 rounded-xl bg-blue-50/70 border border-blue-200 hover:border-blue-400 hover:shadow-sm transition">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-semibold text-blue-700 truncate">กำลังดำเนินการ</span>
+            <span class="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0"></span>
+          </div>
+          <span id="stat-in_progress" class="text-2xl font-bold text-blue-700">0</span>
+        </button>
+
+        <button type="button" onclick="jumpToChecklist('waiting_check')" class="text-left p-3 rounded-xl bg-amber-50/80 border border-amber-200 hover:border-amber-400 hover:shadow-sm transition">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-semibold text-amber-800 truncate">รอตรวจงาน</span>
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></span>
+          </div>
+          <span id="stat-waiting_check" class="text-2xl font-bold text-amber-700">0</span>
+        </button>
+
+        <button type="button" onclick="jumpToChecklist('defect')" class="text-left p-3 rounded-xl bg-rose-50/80 border border-rose-200 hover:border-rose-400 hover:shadow-sm transition">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-semibold text-rose-800 truncate">ต้องแก้ไข/Defect</span>
+            <span class="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0"></span>
+          </div>
+          <span id="stat-defect" class="text-2xl font-bold text-rose-700">0</span>
+        </button>
+
+        <button type="button" onclick="jumpToChecklist('completed')" class="text-left p-3 rounded-xl bg-emerald-50/80 border border-emerald-200 hover:border-emerald-400 hover:shadow-sm transition">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-semibold text-emerald-800 truncate">เสร็จแล้ว</span>
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+          </div>
+          <span id="stat-completed" class="text-2xl font-bold text-emerald-700">0</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ======================================================= -->
+    <!-- 3 MAIN TABS NAVIGATION                                  -->
+    <!-- ======================================================= -->
+    <nav class="bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm grid grid-cols-1 sm:grid-cols-3 gap-1.5 no-print">
+      <button type="button" id="tab-btn-1" onclick="switchTab(1)" class="py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-2">
+        <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 tab-badge">1</span>
+        <span>ตรวจหน้างาน & บันทึก</span>
+      </button>
+      <button type="button" id="tab-btn-2" onclick="switchTab(2)" class="py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-2">
+        <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 tab-badge">2</span>
+        <span>ติดตาม & ไทม์ไลน์</span>
+      </button>
+      <button type="button" id="tab-btn-3" onclick="switchTab(3)" class="py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-2">
+        <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 tab-badge">3</span>
+        <span>เช็คลิสต์ & สรุปทีม</span>
+      </button>
+    </nav>
+
+    <!-- ======================================================= -->
+    <!-- TAB 1: ตรวจหน้างาน & บันทึก                             -->
+    <!-- ======================================================= -->
+    <section id="tab-panel-1">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        <!-- Left Form -->
+        <div class="lg:col-span-6 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
+          <div class="pb-4 mb-5 border-b border-slate-100">
+            <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              <i class="fa-solid fa-clipboard-list text-indigo-600"></i>
+              <span>บันทึกรายการตรวจหน้างาน</span>
+            </h3>
+            <p class="text-xs sm:text-sm text-slate-500 mt-0.5">บันทึกจุดที่ต้องซ่อมแซมและตกลงกับช่าง พร้อมแนบรูปภาพหน้างาน</p>
+          </div>
+
+          <form id="task-form" onsubmit="handleAddTask(event)" class="space-y-4">
+            <!-- Zone Selector + Inline Add Zone -->
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label for="f-zone" class="block text-xs font-semibold text-slate-700">โซน / ห้อง *</label>
+                <button type="button" onclick="openZonesModal()" class="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition">
+                  <i class="fa-solid fa-sliders text-[10px]"></i>
+                  <span>จัดการโซน</span>
+                </button>
+              </div>
+              <div class="flex gap-2">
+                <select id="f-zone" required class="w-full min-w-0 rounded-xl border border-slate-300 px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none"></select>
+                <button type="button" onclick="toggleInlineZone('add')" class="px-3.5 py-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold whitespace-nowrap shrink-0 transition">
+                  + เพิ่มโซน
+                </button>
+              </div>
+              <!-- Inline Add Zone Bar (Tab 1) -->
+              <div id="inline-zone-box-add" class="hidden mt-2 p-2.5 rounded-xl bg-indigo-50/70 border border-indigo-200 flex flex-wrap sm:flex-nowrap items-center gap-2">
+                <input type="text" id="inline-zone-input-add" onkeydown="handleInlineZoneKeydown(event, 'add')" placeholder="พิมพ์ชื่อโซนใหม่ เช่น ห้องแต่งตัว, ลานซักล้าง..." class="w-full min-w-0 rounded-xl border border-indigo-300 px-3 py-2 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+                <div class="flex items-center gap-1.5 shrink-0 w-full sm:w-auto justify-end">
+                  <button type="button" onclick="saveInlineZone('add')" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition">บันทึก</button>
+                  <button type="button" onclick="toggleInlineZone('add', false)" class="px-3 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold transition">ยกเลิก</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Technician & Inspector -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label for="f-tech" class="block text-xs font-semibold text-slate-700 mb-1.5">ชื่อช่าง / ทีมช่าง *</label>
+                <input type="text" id="f-tech" list="technician-list" required placeholder="เช่น ช่างสมชาย (ชุดปูน/กระเบื้อง)" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+              </div>
+              <div>
+                <label for="f-inspector" class="block text-xs font-semibold text-slate-700 mb-1.5">ผู้ตรวจหน้างาน *</label>
+                <input type="text" id="f-inspector" list="inspector-list" required placeholder="เช่น ชุติมณฑน์, ปลา" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+                <div class="flex flex-wrap gap-1.5 mt-1.5">
+                  <button type="button" onclick="setInspectorValue('f-inspector', 'ชุติมณฑน์')" class="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-[11px] font-medium text-slate-600 transition">ชุติมณฑน์</button>
+                  <button type="button" onclick="setInspectorValue('f-inspector', 'ปลา')" class="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-[11px] font-medium text-slate-600 transition">ปลา</button>
+                  <button type="button" onclick="setInspectorValue('f-inspector', 'พี่โอ๋')" class="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-[11px] font-medium text-slate-600 transition">พี่โอ๋</button>
+                  <button type="button" onclick="setInspectorValue('f-inspector', 'พี่มุก')" class="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-[11px] font-medium text-slate-600 transition">พี่มุก</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Itemized Repair Details -->
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="block text-xs font-semibold text-slate-700">รายละเอียดจุดที่ต้องซ่อม / แก้ไขที่คุยกับช่าง *</label>
+                <span id="add-items-count" class="text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full">1 หัวข้อ</span>
+              </div>
+              <div id="add-items-list" class="space-y-2"></div>
+              <button type="button" onclick="addFormItem('add', true)" class="mt-2 w-full py-2 px-3 rounded-xl border border-dashed border-indigo-300 bg-indigo-50/40 hover:bg-indigo-50 text-indigo-700 text-xs font-semibold transition flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-plus text-[11px]"></i>
+                <span>เพิ่มหัวข้อ (หรือกด Enter ในช่องสุดท้าย)</span>
+              </button>
+            </div>
+
+            <!-- Optional Note -->
+            <div>
+              <label for="f-note" class="block text-xs font-semibold text-slate-700 mb-1.5">หมายเหตุเพิ่มเติม (ไม่บังคับ)</label>
+              <input type="text" id="f-note" placeholder="เช่น ใช้วัสดุของเจ้าของบ้าน, ให้ช่างแจ้งก่อนเข้าหน้างาน..." class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </div>
+
+            <!-- Date & Initial Status -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label for="f-date" class="block text-xs font-semibold text-slate-700 mb-1.5">วันที่ตรวจ *</label>
+                <input type="date" id="f-date" required class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+              </div>
+              <div>
+                <label for="f-status" class="block text-xs font-semibold text-slate-700 mb-1.5">สถานะเริ่มต้น *</label>
+                <select id="f-status" required class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                  <option value="survey" selected>เข้าสำรวจหน้างาน</option>
+                  <option value="pending">รอดำเนินการ</option>
+                  <option value="in_progress">กำลังดำเนินการ</option>
+                  <option value="waiting_check">รอตรวจงาน</option>
+                  <option value="defect">ต้องแก้ไข/Defect</option>
+                  <option value="completed">เสร็จแล้ว</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Photo Upload -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1.5">แนบรูปภาพหน้างาน (บีบอัดอัตโนมัติสูงสุด 3 รูป)</label>
+              <label class="flex flex-col sm:flex-row items-center justify-center gap-3 w-full p-4 border-2 border-dashed border-slate-300 rounded-2xl cursor-pointer bg-slate-50 hover:bg-indigo-50/50 hover:border-indigo-400 transition text-center sm:text-left">
+                <div class="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-indigo-500 shrink-0 shadow-sm">
+                  <i class="fa-solid fa-camera text-base"></i>
+                </div>
+                <div>
+                  <span class="block text-sm text-slate-700 font-semibold">แตะเพื่อถ่ายรูป หรือเลือกรูปจากเครื่อง</span>
+                  <span class="block text-xs text-slate-400">บีบอัดขนาดอัตโนมัติเพื่อเก็บใน localStorage</span>
+                </div>
+                <input type="file" accept="image/*" multiple onchange="handlePhotoUpload(event, 'add')" class="hidden" />
+              </label>
+              <div id="add-photo-preview" class="flex flex-wrap gap-2.5 mt-2.5"></div>
+            </div>
+
+            <button type="submit" class="w-full py-3.5 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white font-semibold text-sm sm:text-base shadow-md shadow-indigo-200 transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-floppy-disk"></i>
+              <span>บันทึกรายการตรวจหน้างาน</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- Right Recorded List -->
+        <div class="lg:col-span-6 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6 space-y-4">
+          <div class="flex items-center justify-between gap-2 pb-3 border-b border-slate-100">
+            <div>
+              <h3 class="text-base sm:text-lg font-bold text-slate-900">รายการที่บันทึกไว้ทั้งหมด</h3>
+              <p class="text-xs text-slate-500">ติ๊กเช็คทีละหัวข้อ แก้ไข หรือคลิกรูปภาพเพื่อขยายดู</p>
+            </div>
+            <span id="tab1-count-badge" class="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-700">0 รายการ</span>
+          </div>
+
+          <div id="tab1-list" class="space-y-3 max-h-[820px] overflow-y-auto pr-1"></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ======================================================= -->
+    <!-- TAB 2: ติดตาม & ไทม์ไลน์                                 -->
+    <!-- ======================================================= -->
+    <section id="tab-panel-2" class="hidden space-y-4">
+      <div id="tab2-survey-banner" class="hidden bg-indigo-50/90 border border-indigo-200 rounded-2xl px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-2 text-xs sm:text-sm text-indigo-900">
+          <i class="fa-solid fa-clipboard-list text-indigo-600"></i>
+          <span id="tab2-survey-banner-text"></span>
+        </div>
+        <button type="button" onclick="jumpToChecklist('survey')" class="px-3 py-1.5 rounded-xl bg-white hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold transition">
+          ดูหน้ารวมสำรวจหน้างาน →
+        </button>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h3 class="text-base sm:text-lg font-bold text-slate-900">ติดตามความคืบหน้า & ไทม์ไลน์หน้างาน</h3>
+          <p class="text-xs sm:text-sm text-slate-500">แสดงเฉพาะงานที่เริ่มดำเนินการซ่อมแล้ว กดขั้นตอน 1–5 เพื่ออัปเดตทันที หรือเพิ่มบันทึก (Log)</p>
+        </div>
+        <select id="tab2-zone-filter" onchange="renderTab2()" class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none"></select>
+      </div>
+
+      <div id="tab2-list" class="space-y-4"></div>
+    </section>
+
+    <!-- ======================================================= -->
+    <!-- TAB 3: เช็คลิสต์ & สรุปทีม                               -->
+    <!-- ======================================================= -->
+    <section id="tab-panel-3" class="hidden space-y-6">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-slate-900">เช็คลิสต์ตรวจรับงาน & สรุปงานทีม</h3>
+            <p class="text-xs sm:text-sm text-slate-500">กรองงาน ติ๊กเสร็จสิ้น แจ้งจุดแก้ไข (Defect) และส่งสรุปให้ทีม</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" onclick="copyLineSummary()" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-[#06C755] hover:bg-[#05b34c] text-white text-xs sm:text-sm font-semibold shadow-sm transition flex items-center justify-center gap-2">
+              <i class="fa-brands fa-line text-base"></i>
+              <span>คัดลอกสรุปส่ง LINE ทีม</span>
+            </button>
+            <button type="button" onclick="printPDFReport()" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs sm:text-sm font-semibold shadow-sm transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-print"></i>
+              <span>พิมพ์ / Export PDF</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="relative">
+            <i class="fa-solid fa-magnifying-glass text-slate-400 text-xs absolute left-3 top-1/2 -translate-y-1/2"></i>
+            <input type="text" id="tab3-search" oninput="renderTab3()" placeholder="ค้นหารายละเอียด, ช่าง, ผู้ตรวจ..." class="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+          <select id="tab3-status-filter" onchange="renderTab3()" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+            <option value="all">ทุกสถานะ</option>
+            <option value="survey">เข้าสำรวจหน้างาน</option>
+            <option value="pending">รอดำเนินการ</option>
+            <option value="in_progress">กำลังดำเนินการ</option>
+            <option value="waiting_check">รอตรวจงาน</option>
+            <option value="defect">ต้องแก้ไข/Defect</option>
+            <option value="completed">เสร็จแล้ว</option>
+          </select>
+          <select id="tab3-zone-filter" onchange="renderTab3()" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none"></select>
+        </div>
+
+        <!-- Section 1: Compiled Survey Summary (Read-Only Display) -->
+        <div id="tab3-survey-section" class="hidden space-y-3 pt-2"></div>
+
+        <!-- Section 2: Active Repair Checklist -->
+        <div id="tab3-repair-section" class="space-y-3 pt-2">
+          <div id="tab3-repair-header" class="flex items-center justify-between border-b border-slate-100 pb-2">
+            <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <i class="fa-solid fa-list-check text-emerald-600"></i>
+              <span>เช็คลิสต์ติดตามงานซ่อมจริง</span>
+            </h4>
+            <span id="tab3-repair-count" class="text-xs font-semibold text-slate-500">0 รายการ</span>
+          </div>
+          <div id="tab3-checklist" class="space-y-3"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================= -->
+    <!-- PRINT REPORT CONTAINER (ONLY VISIBLE WHEN PRINTING)     -->
+    <!-- ======================================================= -->
+    <section id="print-report-container" class="hidden print-only space-y-4"></section>
+
+  </main>
+
+  <footer class="max-w-7xl w-full mx-auto px-4 py-5 text-center text-xs text-slate-400 no-print">
+    บันทึกข้อมูลทั้งหมดลง localStorage อัตโนมัติ • รองรับ Export/Import JSON และเชื่อมต่อ Google Apps Script ที่เมนูตั้งค่า
+  </footer>
+
+  <!-- ========================================================= -->
+  <!-- MODALS                                                    -->
+  <!-- ========================================================= -->
+
+  <!-- 1. Project Add/Edit Modal -->
+  <div id="project-modal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 id="project-modal-title" class="text-lg font-bold text-slate-900">เพิ่มโครงการใหม่</h3>
+        <button type="button" onclick="closeModal('project-modal')" class="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">✕</button>
+      </div>
+      <form onsubmit="handleProjectSubmit(event)" class="space-y-3.5">
+        <input type="hidden" id="pm-mode" />
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">ชื่อโครงการ / ชื่อบ้าน *</label>
+          <input type="text" id="pm-name" required placeholder="เช่น บ้านเดี่ยว สุขุมวิท 77" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">ทำเล / ที่อยู่</label>
+          <input type="text" id="pm-location" placeholder="เช่น ซอยอ่อนนุช 17, กรุงเทพฯ" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">หมายเหตุโครงการ</label>
+          <input type="text" id="pm-note" placeholder="เช่น รีโนเวทก่อนส่งมอบ" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeModal('project-modal')" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200">ยกเลิก</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">บันทึกโครงการ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. Edit Task Modal -->
+  <div id="edit-task-modal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="text-lg font-bold text-slate-900">แก้ไขรายการตรวจหน้างาน</h3>
+        <button type="button" onclick="closeModal('edit-task-modal')" class="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">✕</button>
+      </div>
+      <form onsubmit="handleEditTaskSubmit(event)" class="space-y-3.5">
+        <input type="hidden" id="et-id" />
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">โซน / ห้อง *</label>
+          <div class="flex gap-1.5">
+            <select id="et-zone" required class="w-full min-w-0 rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none"></select>
+            <button type="button" onclick="toggleInlineZone('edit')" class="px-3 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold whitespace-nowrap shrink-0">+ เพิ่มโซน</button>
+          </div>
+          <!-- Inline Add Zone Bar (Edit Modal) -->
+          <div id="inline-zone-box-edit" class="hidden mt-2 p-2 rounded-xl bg-indigo-50/70 border border-indigo-200 flex flex-wrap sm:flex-nowrap items-center gap-1.5">
+            <input type="text" id="inline-zone-input-edit" onkeydown="handleInlineZoneKeydown(event, 'edit')" placeholder="พิมพ์ชื่อโซนใหม่..." class="w-full min-w-0 rounded-xl border border-indigo-300 px-2.5 py-1.5 text-xs bg-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button type="button" onclick="saveInlineZone('edit')" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold">บันทึก</button>
+              <button type="button" onclick="toggleInlineZone('edit', false)" class="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold">ยกเลิก</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">ชื่อช่าง / ทีมช่าง *</label>
+            <input type="text" id="et-tech" list="technician-list" required class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">ผู้ตรวจหน้างาน *</label>
+            <input type="text" id="et-inspector" list="inspector-list" required class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-xs font-semibold text-slate-700">รายละเอียดจุดที่ต้องซ่อม / แก้ไข (แยกเป็นหัวข้อ) *</label>
+            <span id="edit-items-count" class="text-[11px] font-semibold text-indigo-600">0 หัวข้อ</span>
+          </div>
+          <div id="edit-items-list" class="space-y-2"></div>
+          <button type="button" onclick="addFormItem('edit', true)" class="mt-2 w-full py-1.5 px-3 rounded-xl border border-dashed border-indigo-300 bg-indigo-50/40 hover:bg-indigo-50 text-indigo-700 text-xs font-semibold transition">
+            + เพิ่มหัวข้อ
+          </button>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">หมายเหตุเพิ่มเติม (ไม่บังคับ)</label>
+          <input type="text" id="et-note" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">วันที่ตรวจ *</label>
+            <input type="date" id="et-date" required class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">สถานะ *</label>
+            <select id="et-status" required class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+              <option value="survey">เข้าสำรวจหน้างาน</option>
+              <option value="pending">รอดำเนินการ</option>
+              <option value="in_progress">กำลังดำเนินการ</option>
+              <option value="waiting_check">รอตรวจงาน</option>
+              <option value="defect">ต้องแก้ไข/Defect</option>
+              <option value="completed">เสร็จแล้ว</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1.5">รูปภาพหน้างาน (สูงสุด 3 รูป)</label>
+          <label class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 hover:bg-indigo-50 cursor-pointer text-xs font-semibold text-slate-700">
+            <i class="fa-solid fa-camera text-indigo-600"></i>
+            <span>เพิ่มรูปภาพ</span>
+            <input type="file" accept="image/*" multiple onchange="handlePhotoUpload(event, 'edit')" class="hidden" />
+          </label>
+          <div id="edit-photo-preview" class="flex flex-wrap gap-2 mt-2"></div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+          <button type="button" onclick="closeModal('edit-task-modal')" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200">ยกเลิก</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">บันทึกการแก้ไข</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 3. Add Progress Log Modal -->
+  <div id="log-modal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-bold text-slate-900">เพิ่มบันทึกความคืบหน้า (Log)</h3>
+        <button type="button" onclick="closeModal('log-modal')" class="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">✕</button>
+      </div>
+      <p id="log-task-preview" class="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200"></p>
+      <form onsubmit="handleAddLog(event)" class="space-y-3.5">
+        <input type="hidden" id="log-task-id" />
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">วันที่ *</label>
+            <input type="date" id="log-date" required class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">ผู้บันทึก *</label>
+            <input type="text" id="log-author" list="inspector-list" required placeholder="เช่น ปลา, พี่โอ๋" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">รายละเอียดความคืบหน้า *</label>
+          <textarea id="log-note" rows="3" required placeholder="เช่น ช่างเข้าทากันซึมรอบ 2 เสร็จแล้ว พรุ่งนี้ปูกระเบื้อง..." class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"></textarea>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeModal('log-modal')" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200">ยกเลิก</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">บันทึก Log</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 4. Defect Modal -->
+  <div id="defect-modal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-bold text-rose-700">⚠️ แจ้งจุดต้องแก้ไขเพิ่มเติม (Defect)</h3>
+        <button type="button" onclick="closeModal('defect-modal')" class="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">✕</button>
+      </div>
+      <p id="defect-task-preview" class="text-xs text-slate-600 bg-rose-50 p-3 rounded-xl border border-rose-200"></p>
+      <form onsubmit="handleDefectSubmit(event)" class="space-y-3.5">
+        <input type="hidden" id="defect-task-id" />
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">วันที่ตรวจพบ *</label>
+          <input type="date" id="defect-date" required class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500 outline-none" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">หมายเหตุจุดที่ต้องแก้ไข *</label>
+          <textarea id="defect-note" rows="3" required placeholder="เช่น รอยยาแนวไม่เรียบ สีผนังด้านซ้ายยังด่าง..." class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500 outline-none"></textarea>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeModal('defect-modal')" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200">ยกเลิก</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700">บันทึก Defect</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 5. Settings & Backup Modal -->
+  <div id="settings-modal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-5 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="text-lg font-bold text-slate-900">ตั้งค่า & สำรองข้อมูล</h3>
+        <button type="button" onclick="closeModal('settings-modal')" class="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">✕</button>
+      </div>
+
+      <!-- Export / Import JSON -->
+      <div class="space-y-2.5">
+        <h4 class="text-sm font-bold text-slate-800">1. สำรองและนำเข้าข้อมูล (JSON)</h4>
+        <p class="text-xs text-slate-500">ส่งออกข้อมูลโครงการ โซนทั้งหมด รายการงาน รูปภาพ และไทม์ไลน์เป็นไฟล์ JSON</p>
+        <div class="grid grid-cols-2 gap-2.5">
+          <button type="button" onclick="exportJSON()" class="py-2.5 px-3 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-download"></i>
+            <span>Export JSON</span>
+          </button>
+          <label class="py-2.5 px-3 rounded-xl bg-teal-50 text-teal-700 border border-teal-200 hover:bg-teal-100 text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-upload"></i>
+            <span>Import JSON</span>
+            <input type="file" accept=".json" onchange="importJSON(event)" class="hidden" />
+          </label>
+        </div>
+      </div>
+
+      <hr class="border-slate-100" />
+
+      <!-- Google Apps Script URL -->
+      <div class="space-y-2.5">
+        <h4 class="text-sm font-bold text-slate-800">2. เชื่อมต่อ Google Sheets (Google Apps Script Web App URL)</h4>
+        <p class="text-xs text-slate-500">วาง Web App URL เพื่อเชื่อมต่อ Google Sheets ในอนาคต</p>
+        <input type="url" id="gas-url-input" placeholder="https://script.google.com/macros/s/xxxxx/exec" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+        <div class="flex flex-wrap gap-2">
+          <button type="button" onclick="saveGasUrl()" class="px-4 py-2 rounded-xl bg-slate-800 text-white text-xs font-semibold hover:bg-slate-900">บันทึกการตั้งค่า</button>
+          <button type="button" onclick="syncGoogleSheets('push')" class="px-3.5 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700">ส่งขึ้น Sheet</button>
+          <button type="button" onclick="syncGoogleSheets('pull')" class="px-3.5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700">ดึงจาก Sheet</button>
+        </div>
+      </div>
+
+      <hr class="border-slate-100" />
+
+      <!-- Reset Sample Data -->
+      <div class="flex items-center justify-between gap-3 bg-rose-50/70 p-3.5 rounded-xl border border-rose-200">
+        <div>
+          <p class="text-xs font-bold text-rose-800">รีเซ็ตเป็นข้อมูลตัวอย่างเริ่มต้น</p>
+          <p class="text-[11px] text-rose-600">ล้างข้อมูลปัจจุบันและโหลดโครงการตัวอย่าง 2 โครงการใหม่</p>
+        </div>
+        <button type="button" onclick="confirmResetSample()" class="px-3 py-2 rounded-xl bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 shrink-0">รีเซ็ตข้อมูล</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. Custom Confirm Modal -->
+  <div id="confirm-modal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl space-y-4">
+      <h3 id="confirm-title" class="text-base font-bold text-slate-900">ยืนยันการดำเนินการ</h3>
+      <p id="confirm-msg" class="text-sm text-slate-600"></p>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="closeModal('confirm-modal')" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200">ยกเลิก</button>
+        <button type="button" id="confirm-ok-btn" class="px-4 py-2 rounded-xl bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700">ยืนยัน</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. Image Lightbox Modal -->
+  <div id="lightbox-modal" onclick="closeModal('lightbox-modal')" class="fixed inset-0 z-50 hidden bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+    <div class="relative max-w-3xl w-full flex flex-col items-center">
+      <img id="lightbox-img" src="" alt="รูปภาพหน้างาน" class="max-h-[82vh] rounded-2xl shadow-2xl object-contain" />
+      <button type="button" onclick="closeModal('lightbox-modal')" class="mt-3 px-4 py-2 rounded-xl bg-white/20 text-white text-xs font-medium hover:bg-white/30">ปิดหน้าต่างรูปภาพ</button>
+    </div>
+  </div>
+
+  <!-- 8. Manage Zones Modal (Inline Add / Inline Edit / Inline Delete Confirm) -->
+  <div id="zones-modal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4 max-h-[88vh] flex flex-col">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div>
+          <h3 class="text-lg font-bold text-slate-900">จัดการโซน / ห้อง</h3>
+          <p class="text-xs text-slate-500">เพิ่ม แก้ไขชื่อ หรือลบโซน (อัปเดตงานเดิมให้อัตโนมัติ)</p>
+        </div>
+        <button type="button" onclick="closeModal('zones-modal')" class="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">✕</button>
+      </div>
+      <div class="flex gap-2">
+        <input type="text" id="new-zone-modal-input" onkeydown="if(event.key==='Enter'){event.preventDefault();addZoneFromModal();}" placeholder="พิมพ์ชื่อโซนใหม่ เช่น ห้องแต่งตัว..." class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+        <button type="button" onclick="addZoneFromModal()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shrink-0">+ เพิ่ม</button>
+      </div>
+      <div id="zones-manage-list" class="space-y-2 overflow-y-auto pr-1 flex-1"></div>
+    </div>
+  </div>
+
+  <!-- 9. Quick Add Sub-Item Modal -->
+  <div id="quick-item-modal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-slate-900">+ เพิ่มหัวข้อซ่อมเพิ่มเติม</h3>
+        <button type="button" onclick="closeModal('quick-item-modal')" class="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">✕</button>
+      </div>
+      <form onsubmit="handleQuickAddItem(event)" class="space-y-3">
+        <input type="hidden" id="qi-task-id" />
+        <input type="text" id="qi-text" required placeholder="พิมพ์รายละเอียดหัวข้อซ่อมใหม่..." class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+        <div class="flex justify-end gap-2">
+          <button type="button" onclick="closeModal('quick-item-modal')" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-semibold">ยกเลิก</button>
+          <button type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700">เพิ่มหัวข้อ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 no-print"></div>
+
+  <!-- ========================================================= -->
+  <!-- JAVASCRIPT APPLICATION LOGIC                              -->
+  <!-- ========================================================= -->
+  <script>
+    // =========================================================
+    // 1. CONSTANTS & CONFIGURATION
+    // =========================================================
+    const STORAGE_KEY = 'renotrack_th_v2_data';
+    const SETTINGS_KEY = 'renotrack_th_v2_settings';
+
+    const DEFAULT_ZONES = [
+      'ห้องนั่งเล่น',
+      'ห้องครัว',
+      'ห้องน้ำชั้น 1',
+      'ห้องน้ำชั้น 2',
+      'ห้องนอนใหญ่',
+      'ห้องนอน 2',
+      'ระเบียง/หน้าบ้าน',
+      'โรงจอดรถ',
+      'บันได/โถงทางเดิน',
+      'ภายนอก/รั้ว'
+    ];
+
+    const STATUS_MAP = {
+      survey: { label: 'เข้าสำรวจหน้างาน', badge: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+      pending: { label: 'รอดำเนินการ', badge: 'bg-slate-100 text-slate-700 border-slate-200' },
+      in_progress: { label: 'กำลังดำเนินการ', badge: 'bg-blue-50 text-blue-700 border-blue-200' },
+      waiting_check: { label: 'รอตรวจงาน', badge: 'bg-amber-50 text-amber-800 border-amber-200' },
+      defect: { label: 'ต้องแก้ไข/Defect', badge: 'bg-rose-50 text-rose-700 border-rose-200' },
+      completed: { label: 'เสร็จแล้ว', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' }
+    };
+
+    const STEPS = [
+      { num: 1, label: 'รับเรื่อง/สำรวจ' },
+      { num: 2, label: 'เตรียมวัสดุ' },
+      { num: 3, label: 'กำลังซ่อมแซม' },
+      { num: 4, label: 'ตรวจรับงาน' },
+      { num: 5, label: 'เสร็จสิ้น' }
+    ];
+
+    // =========================================================
+    // 2. SAMPLE DATA
+    // =========================================================
+    function getSampleData() {
+      return {
+        activeProjectId: 'proj-skv77',
+        zones: [...DEFAULT_ZONES],
+        projects: [
+          {
+            id: 'proj-skv77',
+            name: 'บ้านเดี่ยว สุขุมวิท 77',
+            location: 'ซอยอ่อนนุช 17, กรุงเทพฯ',
+            note: 'รีโนเวททั้งหลังก่อนเข้าอยู่ กำหนดส่งมอบสิ้นเดือน',
+            tasks: [
+              {
+                id: 't-104',
+                zone: 'ห้องครัว',
+                items: [
+                  { id: 'i-104a', text: 'วัดขนาดเคาน์เตอร์เพื่อเปลี่ยนซิงค์ล้างจานสแตนเลส 2 หลุม', done: false },
+                  { id: 'i-104b', text: 'ตรวจเช็คแนวท่อน้ำดี-น้ำทิ้งและชุดดักกลิ่นเดิม', done: false }
+                ],
+                note: 'นัดช่างบอยเข้าวัดหน้างานและตีราคาเบื้องต้น',
+                technician: 'ช่างบอย (ชุดประปา)',
+                inspector: 'พี่มุก',
+                date: '2026-11-24',
+                status: 'survey',
+                step: 1,
+                defectNote: '',
+                defectDate: '',
+                photos: [],
+                logs: []
+              },
+              {
+                id: 't-101',
+                zone: 'ห้องน้ำชั้น 2',
+                items: [
+                  { id: 'i-101a', text: 'สกัดกระเบื้องพื้นห้องน้ำชั้น 2 ที่มีน้ำรั่วซึม', done: true },
+                  { id: 'i-101b', text: 'ทากันซึมใหม่ 2 รอบ และขังน้ำเทสต์ 24 ชม.', done: true },
+                  { id: 'i-101c', text: 'ปูกระเบื้องกันลื่นใหม่พร้อมยาแนวกันรา', done: false }
+                ],
+                note: 'กระเบื้องสั่งมาลงหน้างานแล้ว',
+                technician: 'ช่างสมชาย (ชุดปูน/กระเบื้อง)',
+                inspector: 'ชุติมณฑน์',
+                date: '2026-11-18',
+                status: 'in_progress',
+                step: 3,
+                defectNote: '',
+                defectDate: '',
+                photos: [],
+                logs: [
+                  { id: 'l-1', date: '2026-11-23', author: 'พี่โอ๋', note: 'ขังน้ำเทสต์ 24 ชม. ผ่าน ไม่พบน้ำซึมลงฝ้าชั้นล่าง วันนี้เริ่มปูกระเบื้องใหม่แล้ว' },
+                  { id: 'l-2', date: '2026-11-19', author: 'ชุติมณฑน์', note: 'รื้อกระเบื้องเดิมออกหมดและทำความสะอาดพื้นเตรียมทากันซึม' }
+                ]
+              },
+              {
+                id: 't-102',
+                zone: 'ห้องนั่งเล่น',
+                items: [
+                  { id: 'i-102a', text: 'กรีดอุดรอยแตกร้าวผนังฝั่งทีวี', done: true },
+                  { id: 'i-102b', text: 'ทาสีรองพื้นปูนเก่า 1 เที่ยว และสีจริงเช็ดล้างได้ 2 เที่ยว', done: true },
+                  { id: 'i-102c', text: 'เก็บขอบบัวพื้นรอบห้องให้เรียบร้อย', done: false }
+                ],
+                note: 'ใช้สีขาวควันบุหรี่กึ่งเงาเช็ดล้างได้',
+                technician: 'ช่างวิชัย (ชุดสี/ฝ้า)',
+                inspector: 'ปลา',
+                date: '2026-11-19',
+                status: 'defect',
+                step: 4,
+                defectNote: 'ผนังด้านซ้ายใกล้หน้าต่างยังมีรอยด่างตอนเปิดไฟ และขอบบัวพื้นเปื้อนสีขาว',
+                defectDate: '2026-11-24',
+                photos: [],
+                logs: [
+                  { id: 'l-3', date: '2026-11-24', author: 'ปลา', note: 'เข้าตรวจรอบแรก พบสีด่างและรอยเปื้อนบัวพื้น แจ้งช่างวิชัยเก็บงานพรุ่งนี้' }
+                ]
+              },
+              {
+                id: 't-103',
+                zone: 'ห้องนอนใหญ่',
+                items: [
+                  { id: 'i-103a', text: 'เดินสายไฟเพิ่มปลั๊กคู่ข้างหัวเตียง 2 จุด', done: true },
+                  { id: 'i-103b', text: 'ติดตั้งโคมไฟดาวน์ไลท์วอร์มไวท์ 4 ดวง', done: true }
+                ],
+                note: '',
+                technician: 'ช่างเอก (ชุดไฟฟ้า)',
+                inspector: 'พี่โอ๋',
+                date: '2026-11-20',
+                status: 'completed',
+                step: 5,
+                defectNote: '',
+                defectDate: '',
+                photos: [],
+                logs: [
+                  { id: 'l-4', date: '2026-11-22', author: 'พี่โอ๋', note: 'ทดสอบกระแสไฟและสายดินเรียบร้อย ตรวจรับงานเสร็จสมบูรณ์' }
+                ]
+              }
+            ]
+          },
+          {
+            id: 'proj-onnut44',
+            name: 'ทาวน์โฮม อ่อนนุช 44',
+            location: 'อ่อนนุช 44, กรุงเทพฯ',
+            note: 'ปรับปรุงเพื่อปล่อยเช่า เน้นปูพื้น SPC และเปลี่ยนสุขภัณฑ์',
+            tasks: [
+              {
+                id: 't-201',
+                zone: 'ห้องนอนใหญ่',
+                items: [
+                  { id: 'i-201a', text: 'ปูพื้นกระเบื้องยาง SPC ลายไม้หนา 5 มม. ห้องนอนใหญ่และห้องนอน 2', done: true },
+                  { id: 'i-201b', text: 'ติดบัวพื้น PVC สีขาวรอบห้อง', done: true }
+                ],
+                note: '',
+                technician: 'ช่างนพ (ชุดไม้/บิวท์อิน)',
+                inspector: 'ปลา',
+                date: '2026-11-20',
+                status: 'waiting_check',
+                step: 4,
+                defectNote: '',
+                defectDate: '',
+                photos: [],
+                logs: [
+                  { id: 'l-5', date: '2026-11-24', author: 'ปลา', note: 'ช่างปูพื้นและติดบัวเสร็จเรียบร้อยแล้ว รอเข้าตรวจรับงานพรุ่งนี้เช้า' }
+                ]
+              },
+              {
+                id: 't-202',
+                zone: 'ห้องน้ำชั้น 1',
+                items: [
+                  { id: 'i-202a', text: 'เปลี่ยนชักโครกและอ่างล้างหน้าชุดใหม่', done: false },
+                  { id: 'i-202b', text: 'เปลี่ยนสายฉีดชำระและยาแนวรอบฐานชักโครก', done: false }
+                ],
+                note: 'รอคิวช่างเข้าติดตั้งวันศุกร์นี้',
+                technician: 'ช่างบอย (ชุดประปา)',
+                inspector: 'ชุติมณฑน์',
+                date: '2026-11-21',
+                status: 'pending',
+                step: 2,
+                defectNote: '',
+                defectDate: '',
+                photos: [],
+                logs: []
+              }
+            ]
+          }
+        ]
+      };
+    }
+
+    // =========================================================
+    // 3. STATE & STORAGE
+    // =========================================================
+    let appState = normalizeState(loadData());
+    let appSettings = loadSettings();
+    let currentTab = 1;
+    let draftPhotos = { add: [], edit: [] };
+    let draftItems = { add: [''], edit: [''] };
+    let confirmCallback = null;
+    let pendingDeleteZoneIdx = null;
+
+    function normalizeState(state) {
+      if (!state || !Array.isArray(state.projects) || state.projects.length === 0) {
+        return getSampleData();
+      }
+      if (!Array.isArray(state.zones) || state.zones.length === 0) {
+        state.zones = [...DEFAULT_ZONES];
+      }
+      state.projects.forEach(p => {
+        (p.tasks || []).forEach(t => {
+          if (!Array.isArray(t.items) || t.items.length === 0) {
+            const desc = (t.description || '').trim();
+            t.items = desc
+              ? [{ id: 'i-' + Date.now() + Math.random().toString(36).slice(2, 6), text: desc, done: t.status === 'completed' }]
+              : [];
+          }
+          if (t.zone && !state.zones.includes(t.zone)) {
+            state.zones.push(t.zone);
+          }
+        });
+      });
+      return state;
+    }
+
+    function loadData() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.projects) && parsed.projects.length > 0) {
+            return parsed;
+          }
+        }
+      } catch (e) {
+        console.error('Load error:', e);
+      }
+      const sample = getSampleData();
+      saveData(sample);
+      return sample;
+    }
+
+    function saveData(data = appState) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      } catch (e) {
+        console.error('Save error:', e);
+        showToast('พื้นที่จัดเก็บใกล้เต็ม กรุณาลบรูปเก่าหรือ Export JSON สำรองไว้', 'error');
+      }
+    }
+
+    function loadSettings() {
+      try {
+        const raw = localStorage.getItem(SETTINGS_KEY);
+        return raw ? JSON.parse(raw) : { gasUrl: '' };
+      } catch {
+        return { gasUrl: '' };
+      }
+    }
+
+    function saveSettings() {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(appSettings));
+    }
+
+    function getActiveProject() {
+      let proj = appState.projects.find(p => p.id === appState.activeProjectId);
+      if (!proj && appState.projects.length > 0) {
+        proj = appState.projects[0];
+        appState.activeProjectId = proj.id;
+      }
+      return proj;
+    }
+
+    // =========================================================
+    // 4. UTILITIES
+    // =========================================================
+    function getTodayISO() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function formatThaiDate(iso) {
+      if (!iso) return '-';
+      const parts = iso.split('-');
+      if (parts.length !== 3) return iso;
+      const months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+      const yearBE = parseInt(parts[0], 10) + 543;
+      return `${parseInt(parts[2], 10)} ${months[parseInt(parts[1], 10) - 1] || ''} ${String(yearBE).slice(-2)}`;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function getTaskSummaryText(t) {
+      const items = t.items || [];
+      if (items.length === 0) return t.description || '-';
+      return items.map((it, idx) => `${idx + 1}. ${it.text}`).join(' | ');
+    }
+
+    function setInspectorValue(inputId, name) {
+      const el = document.getElementById(inputId);
+      if (el) el.value = name;
+    }
+
+    function showToast(msg, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const el = document.createElement('div');
+      const styles = {
+        success: 'bg-emerald-600 text-white border-emerald-800',
+        error: 'bg-rose-600 text-white border-rose-800',
+        info: 'bg-indigo-600 text-white border-indigo-800'
+      };
+      el.className = `${styles[type] || styles.success} px-4 py-3 rounded-xl shadow-lg text-xs sm:text-sm font-medium border-l-4 transition-all duration-300 opacity-0 translate-y-2 max-w-xs sm:max-w-sm`;
+      el.textContent = msg;
+      container.appendChild(el);
+      requestAnimationFrame(() => el.classList.remove('opacity-0', 'translate-y-2'));
+      setTimeout(() => {
+        el.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => el.remove(), 300);
+      }, 3000);
+    }
+
+    function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    function openConfirmModal(title, msg, onOk) {
+      document.getElementById('confirm-title').textContent = title;
+      document.getElementById('confirm-msg').textContent = msg;
+      confirmCallback = onOk;
+      openModal('confirm-modal');
+    }
+
+    document.getElementById('confirm-ok-btn').addEventListener('click', () => {
+      closeModal('confirm-modal');
+      if (typeof confirmCallback === 'function') {
+        confirmCallback();
+        confirmCallback = null;
+      }
+    });
+
+    function openLightbox(src) {
+      document.getElementById('lightbox-img').src = src;
+      openModal('lightbox-modal');
+    }
+
+    function copyText(text, successMsg) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast(successMsg);
+      } catch {
+        showToast('ไม่สามารถคัดลอกข้อความได้', 'error');
+      } finally {
+        document.body.removeChild(ta);
+      }
+    }
+
+    function compressImage(file, maxWidth = 700, quality = 0.65) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let w = img.width;
+            let h = img.height;
+            if (w > maxWidth) {
+              h = Math.round((h * maxWidth) / w);
+              w = maxWidth;
+            }
+            canvas.width = w;
+            canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+          };
+          img.onerror = reject;
+          img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // =========================================================
+    // 5. ZONE MANAGEMENT (INLINE ADD + MANAGE ZONES MODAL)
+    // =========================================================
+    function initZoneDropdowns(selectedAdd, selectedEdit) {
+      const zones = appState.zones && appState.zones.length ? appState.zones : [...DEFAULT_ZONES];
+      const fZone = document.getElementById('f-zone');
+      const etZone = document.getElementById('et-zone');
+      const tab2Zone = document.getElementById('tab2-zone-filter');
+      const tab3Zone = document.getElementById('tab3-zone-filter');
+
+      const curAdd = selectedAdd || fZone.value || zones[0];
+      const curEdit = selectedEdit || etZone.value || zones[0];
+      const curTab2 = tab2Zone.value || 'all';
+      const curTab3 = tab3Zone.value || 'all';
+
+      const opts = zones.map(z => `<option value="${escapeHtml(z)}">${escapeHtml(z)}</option>`).join('');
+      const filterOpts = `<option value="all">ทุกโซน / ห้อง</option>` + opts;
+
+      fZone.innerHTML = opts;
+      etZone.innerHTML = opts;
+      tab2Zone.innerHTML = filterOpts;
+      tab3Zone.innerHTML = filterOpts;
+
+      fZone.value = zones.includes(curAdd) ? curAdd : zones[0];
+      etZone.value = zones.includes(curEdit) ? curEdit : zones[0];
+      tab2Zone.value = (curTab2 === 'all' || zones.includes(curTab2)) ? curTab2 : 'all';
+      tab3Zone.value = (curTab3 === 'all' || zones.includes(curTab3)) ? curTab3 : 'all';
+    }
+
+    function toggleInlineZone(target, forceState) {
+      const box = document.getElementById(`inline-zone-box-${target}`);
+      const input = document.getElementById(`inline-zone-input-${target}`);
+      if (!box || !input) return;
+      const show = typeof forceState === 'boolean' ? forceState : box.classList.contains('hidden');
+      box.classList.toggle('hidden', !show);
+      if (show) {
+        input.value = '';
+        setTimeout(() => input.focus(), 20);
+      }
+    }
+
+    function handleInlineZoneKeydown(e, target) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        saveInlineZone(target);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        toggleInlineZone(target, false);
+      }
+    }
+
+    function saveInlineZone(target) {
+      const input = document.getElementById(`inline-zone-input-${target}`);
+      if (!input) return;
+      const name = input.value.trim();
+      if (!name) {
+        showToast('กรุณากรอกชื่อโซนใหม่', 'error');
+        input.focus();
+        return;
+      }
+
+      const existing = appState.zones.find(z => z === name);
+      if (existing) {
+        initZoneDropdowns(target === 'add' ? existing : undefined, target === 'edit' ? existing : undefined);
+        toggleInlineZone(target, false);
+        showToast(`มีโซน "${existing}" อยู่แล้ว เลือกให้อัตโนมัติ`, 'info');
+        return;
+      }
+
+      appState.zones.push(name);
+      saveData();
+      initZoneDropdowns(target === 'add' ? name : undefined, target === 'edit' ? name : undefined);
+      toggleInlineZone(target, false);
+      showToast(`เพิ่มโซน "${name}" เรียบร้อยแล้ว`, 'success');
+    }
+
+    function openZonesModal() {
+      pendingDeleteZoneIdx = null;
+      document.getElementById('new-zone-modal-input').value = '';
+      renderZonesModal();
+      openModal('zones-modal');
+    }
+
+    function renderZonesModal() {
+      const container = document.getElementById('zones-manage-list');
+      container.innerHTML = appState.zones.map((z, idx) => {
+        if (pendingDeleteZoneIdx === idx) {
+          return `
+            <div class="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-rose-50 border border-rose-300">
+              <span class="text-xs font-semibold text-rose-800 truncate">ยืนยันลบโซน "${escapeHtml(z)}" ?</span>
+              <div class="flex items-center gap-1.5 shrink-0">
+                <button type="button" onclick="confirmDeleteZone(${idx})" class="px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold">ลบเลย</button>
+                <button type="button" onclick="cancelDeleteZone()" class="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold">ยกเลิก</button>
+              </div>
+            </div>
+          `;
+        }
+        return `
+          <div class="flex items-center gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200">
+            <input type="text" id="zone-edit-inp-${idx}" value="${escapeHtml(z)}" onkeydown="if(event.key==='Enter'){event.preventDefault();renameZone(${idx});}" class="w-full min-w-0 bg-white rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+            <button type="button" onclick="renameZone(${idx})" class="px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold shrink-0 transition">บันทึก</button>
+            <button type="button" onclick="requestDeleteZone(${idx})" class="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold shrink-0 transition" title="ลบโซน">✕</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function addZoneFromModal() {
+      const input = document.getElementById('new-zone-modal-input');
+      const name = input.value.trim();
+      if (!name) {
+        showToast('กรุณากรอกชื่อโซนใหม่', 'error');
+        input.focus();
+        return;
+      }
+      if (appState.zones.includes(name)) {
+        showToast(`มีโซน "${name}" อยู่แล้ว`, 'info');
+        return;
+      }
+      appState.zones.push(name);
+      saveData();
+      input.value = '';
+      initZoneDropdowns();
+      renderZonesModal();
+      showToast(`เพิ่มโซน "${name}" เรียบร้อยแล้ว`, 'success');
+    }
+
+    function renameZone(idx) {
+      const oldName = appState.zones[idx];
+      const inp = document.getElementById(`zone-edit-inp-${idx}`);
+      if (!inp) return;
+      const newName = inp.value.trim();
+      if (!newName) {
+        showToast('ชื่อโซนห้ามว่าง', 'error');
+        return;
+      }
+      if (newName === oldName) return;
+      if (appState.zones.includes(newName)) {
+        showToast('ชื่อโซนนี้ซ้ำกับที่มีอยู่แล้ว', 'error');
+        return;
+      }
+      appState.zones[idx] = newName;
+      appState.projects.forEach(p => {
+        (p.tasks || []).forEach(t => {
+          if (t.zone === oldName) t.zone = newName;
+        });
+      });
+      saveData();
+      initZoneDropdowns();
+      renderZonesModal();
+      renderAll();
+      showToast(`เปลี่ยนชื่อโซนเป็น "${newName}" เรียบร้อยแล้ว`, 'success');
+    }
+
+    function requestDeleteZone(idx) {
+      if (appState.zones.length <= 1) {
+        showToast('ต้องมีอย่างน้อย 1 โซนในระบบ', 'error');
+        return;
+      }
+      pendingDeleteZoneIdx = idx;
+      renderZonesModal();
+    }
+
+    function cancelDeleteZone() {
+      pendingDeleteZoneIdx = null;
+      renderZonesModal();
+    }
+
+    function confirmDeleteZone(idx) {
+      const name = appState.zones[idx];
+      appState.zones.splice(idx, 1);
+      pendingDeleteZoneIdx = null;
+      saveData();
+      initZoneDropdowns();
+      renderZonesModal();
+      showToast(`ลบโซน "${name}" เรียบร้อยแล้ว`, 'info');
+    }
+
+    // =========================================================
+    // 6. PROJECT MANAGEMENT & DASHBOARD
+    // =========================================================
+    function renderProjectSelector() {
+      document.getElementById('project-selector').innerHTML = appState.projects.map(p =>
+        `<option value="${escapeHtml(p.id)}" ${p.id === appState.activeProjectId ? 'selected' : ''}>${escapeHtml(p.name)}</option>`
+      ).join('');
+    }
+
+    function handleProjectChange(id) {
+      appState.activeProjectId = id;
+      saveData();
+      renderAll();
+      showToast('สลับโครงการเรียบร้อยแล้ว', 'info');
+    }
+
+    function openProjectModal(mode) {
+      const proj = getActiveProject();
+      document.getElementById('pm-mode').value = mode;
+      if (mode === 'edit' && proj) {
+        document.getElementById('project-modal-title').textContent = 'แก้ไขข้อมูลโครงการ';
+        document.getElementById('pm-name').value = proj.name;
+        document.getElementById('pm-location').value = proj.location || '';
+        document.getElementById('pm-note').value = proj.note || '';
+      } else {
+        document.getElementById('project-modal-title').textContent = 'เพิ่มโครงการใหม่';
+        document.getElementById('pm-name').value = '';
+        document.getElementById('pm-location').value = '';
+        document.getElementById('pm-note').value = '';
+      }
+      openModal('project-modal');
+    }
+
+    function handleProjectSubmit(e) {
+      e.preventDefault();
+      const mode = document.getElementById('pm-mode').value;
+      const name = document.getElementById('pm-name').value.trim();
+      const location = document.getElementById('pm-location').value.trim();
+      const note = document.getElementById('pm-note').value.trim();
+      if (!name) return;
+
+      if (mode === 'edit') {
+        const proj = getActiveProject();
+        if (proj) { proj.name = name; proj.location = location; proj.note = note; }
+        showToast('แก้ไขข้อมูลโครงการแล้ว');
+      } else {
+        const newProj = { id: 'proj-' + Date.now(), name, location, note, tasks: [] };
+        appState.projects.push(newProj);
+        appState.activeProjectId = newProj.id;
+        showToast(`เพิ่มโครงการ "${name}" แล้ว`);
+      }
+      saveData();
+      closeModal('project-modal');
+      renderAll();
+    }
+
+    function confirmDeleteProject() {
+      if (appState.projects.length <= 1) {
+        showToast('ต้องมีอย่างน้อย 1 โครงการในระบบ', 'error');
+        return;
+      }
+      const proj = getActiveProject();
+      openConfirmModal('ลบโครงการนี้?', `ต้องการลบโครงการ "${proj.name}" และรายการงานทั้งหมดใช่หรือไม่?`, () => {
+        appState.projects = appState.projects.filter(p => p.id !== proj.id);
+        appState.activeProjectId = appState.projects[0].id;
+        saveData();
+        renderAll();
+        showToast('ลบโครงการเรียบร้อยแล้ว');
+      });
+    }
+
+    function renderDashboard() {
+      const proj = getActiveProject();
+      if (!proj) return;
+
+      document.getElementById('dash-project-name').textContent = proj.name;
+      const locEl = document.getElementById('dash-project-location');
+      if (proj.location) {
+        locEl.textContent = proj.location;
+        locEl.classList.remove('hidden');
+      } else {
+        locEl.classList.add('hidden');
+      }
+      document.getElementById('dash-project-note').textContent = proj.note || '';
+
+      const tasks = proj.tasks || [];
+      const counts = { survey: 0, pending: 0, in_progress: 0, waiting_check: 0, defect: 0, completed: 0 };
+      tasks.forEach(t => { if (counts[t.status] !== undefined) counts[t.status]++; });
+
+      Object.keys(counts).forEach(k => {
+        const el = document.getElementById(`stat-${k}`);
+        if (el) el.textContent = counts[k];
+      });
+
+      // คำนวณเปอร์เซ็นต์ความคืบหน้าเฉพาะงานที่เข้าสู่กระบวนการซ่อมจริง 5 สถานะ (ไม่รวมเข้าสำรวจหน้างาน)
+      const repairTasks = tasks.filter(t => t.status !== 'survey');
+      const pct = repairTasks.length > 0 ? Math.round((counts.completed / repairTasks.length) * 100) : 0;
+      document.getElementById('dash-progress-percent').textContent = `${pct}%`;
+      document.getElementById('dash-progress-bar').style.width = `${pct}%`;
+    }
+
+    function switchTab(tabNum) {
+      currentTab = tabNum;
+      for (let i = 1; i <= 3; i++) {
+        const btn = document.getElementById(`tab-btn-${i}`);
+        const panel = document.getElementById(`tab-panel-${i}`);
+        const badge = btn.querySelector('.tab-badge');
+        if (i === tabNum) {
+          btn.className = 'py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-2 bg-indigo-600 text-white shadow-sm';
+          badge.className = 'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 tab-badge bg-white/20 text-white';
+          panel.classList.remove('hidden');
+        } else {
+          btn.className = 'py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-2 text-slate-600 hover:bg-slate-100';
+          badge.className = 'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 tab-badge bg-slate-200 text-slate-600';
+          panel.classList.add('hidden');
+        }
+      }
+      renderAll();
+    }
+
+    function jumpToChecklist(status) {
+      document.getElementById('tab3-status-filter').value = status;
+      switchTab(3);
+    }
+
+    // =========================================================
+    // 7. PHOTO UPLOAD & PREVIEW
+    // =========================================================
+    async function handlePhotoUpload(e, target) {
+      const files = Array.from(e.target.files || []);
+      if (!files.length) return;
+      const list = draftPhotos[target];
+      for (const file of files) {
+        if (list.length >= 3) {
+          showToast('แนบรูปได้สูงสุด 3 รูปต่อรายการ', 'info');
+          break;
+        }
+        try {
+          const compressed = await compressImage(file);
+          list.push(compressed);
+        } catch {
+          showToast('ไม่สามารถอ่านไฟล์รูปภาพได้', 'error');
+        }
+      }
+      e.target.value = '';
+      renderPhotoPreviews(target);
+    }
+
+    function removeDraftPhoto(target, idx) {
+      draftPhotos[target].splice(idx, 1);
+      renderPhotoPreviews(target);
+    }
+
+    function renderPhotoPreviews(target) {
+      const container = document.getElementById(`${target}-photo-preview`);
+      if (!container) return;
+      container.innerHTML = draftPhotos[target].map((src, idx) => `
+        <div class="relative group">
+          <img src="${src}" onclick="openLightbox('${src}')" class="w-16 h-16 rounded-xl object-cover border border-slate-200 cursor-pointer" alt="รูปหน้างาน" />
+          <button type="button" onclick="removeDraftPhoto('${target}', ${idx})" class="w-5 h-5 rounded-full bg-rose-600 text-white text-[10px] font-bold absolute -top-1.5 -right-1.5 flex items-center justify-center shadow">✕</button>
+        </div>
+      `).join('');
+    }
+
+    // =========================================================
+    // 8. TAB 1: INSPECTION & RECORD (ITEMIZED CHECKLIST)
+    // =========================================================
+    function renderFormItems(target) {
+      const items = draftItems[target];
+      const container = document.getElementById(`${target}-items-list`);
+      const countEl = document.getElementById(`${target}-items-count`);
+      if (countEl) countEl.textContent = `${items.length} หัวข้อ`;
+
+      container.innerHTML = items.map((val, idx) => `
+        <div class="flex items-center gap-2">
+          <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center shrink-0">${idx + 1}</span>
+          <input type="text"
+            id="${target}-item-inp-${idx}"
+            value="${escapeHtml(val)}"
+            oninput="updateFormItem('${target}', ${idx}, this.value)"
+            onkeydown="handleFormItemKeydown(event, '${target}', ${idx})"
+            placeholder="หัวข้อซ่อมที่ ${idx + 1} เช่น สกัดกระเบื้องพื้นที่มีน้ำรั่วซึม..."
+            class="w-full min-w-0 rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+          ${items.length > 1 ? `
+            <button type="button" onclick="removeFormItem('${target}', ${idx})" class="p-2 rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition shrink-0" title="ลบหัวข้อนี้">
+              <i class="fa-solid fa-xmark text-xs"></i>
+            </button>
+          ` : ''}
+        </div>
+      `).join('');
+    }
+
+    function addFormItem(target, focusNew = false) {
+      draftItems[target].push('');
+      renderFormItems(target);
+      if (focusNew) {
+        const idx = draftItems[target].length - 1;
+        const inp = document.getElementById(`${target}-item-inp-${idx}`);
+        if (inp) inp.focus();
+      }
+    }
+
+    function updateFormItem(target, idx, val) {
+      draftItems[target][idx] = val;
+    }
+
+    function removeFormItem(target, idx) {
+      if (draftItems[target].length <= 1) return;
+      draftItems[target].splice(idx, 1);
+      renderFormItems(target);
+    }
+
+    function handleFormItemKeydown(e, target, idx) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (idx === draftItems[target].length - 1) {
+          addFormItem(target, true);
+        } else {
+          const next = document.getElementById(`${target}-item-inp-${idx + 1}`);
+          if (next) next.focus();
+        }
+      }
+    }
+
+    function toggleSubItem(taskId, itemId) {
+      const proj = getActiveProject();
+      const t = proj.tasks.find(x => x.id === taskId);
+      if (!t || !t.items) return;
+      const item = t.items.find(i => i.id === itemId);
+      if (!item) return;
+      item.done = !item.done;
+      saveData();
+      renderAll();
+    }
+
+    function openQuickAddItemModal(taskId) {
+      document.getElementById('qi-task-id').value = taskId;
+      document.getElementById('qi-text').value = '';
+      openModal('quick-item-modal');
+      setTimeout(() => document.getElementById('qi-text').focus(), 40);
+    }
+
+    function handleQuickAddItem(e) {
+      e.preventDefault();
+      const proj = getActiveProject();
+      const taskId = document.getElementById('qi-task-id').value;
+      const text = document.getElementById('qi-text').value.trim();
+      if (!text) return;
+      const t = proj.tasks.find(x => x.id === taskId);
+      if (!t) return;
+      t.items = t.items || [];
+      t.items.push({ id: 'i-' + Date.now(), text, done: false });
+      saveData();
+      closeModal('quick-item-modal');
+      renderAll();
+      showToast('เพิ่มหัวข้อซ่อมแล้ว');
+    }
+
+    function renderTaskItemsHtml(t, showSubBar = false) {
+      const items = t.items || [];
+
+      // สถานะ "เข้าสำรวจหน้างาน" แสดงโชว์เป็นรายการข้อความธรรมดา (ไม่มี Checkbox)
+      if (t.status === 'survey') {
+        return `
+          <div class="space-y-1.5 pt-1">
+            <span class="text-[11px] font-semibold text-indigo-700">รายการจุดที่ต้องซ่อม (${items.length} หัวข้อ)</span>
+            <ol class="space-y-1.5">
+              ${items.map((it, idx) => `
+                <li class="flex items-start gap-2 px-2.5 py-2 rounded-xl bg-indigo-50/50 border border-indigo-100/80 text-xs sm:text-sm text-slate-800 leading-snug">
+                  <span class="font-bold text-indigo-600 shrink-0">${idx + 1}.</span>
+                  <span>${escapeHtml(it.text)}</span>
+                </li>
+              `).join('')}
+            </ol>
+            ${t.note ? `<p class="text-xs text-slate-500 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100"><i class="fa-regular fa-note-sticky text-slate-400 mr-1"></i>หมายเหตุ: ${escapeHtml(t.note)}</p>` : ''}
+          </div>
+        `;
+      }
+
+      const doneCount = items.filter(i => i.done).length;
+      const total = items.length;
+      const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+
+      return `
+        <div class="space-y-1.5 pt-1">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-[11px] font-semibold text-slate-500">รายการซ่อม (${doneCount}/${total} หัวข้อ • ${pct}%)</span>
+            <button type="button" onclick="openQuickAddItemModal('${t.id}')" class="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800">+ เพิ่มหัวข้อ</button>
+          </div>
+          ${showSubBar ? `
+            <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+              <div class="bg-emerald-500 h-1.5 rounded-full transition-all duration-300" style="width: ${pct}%"></div>
+            </div>
+          ` : ''}
+          <div class="space-y-1.5">
+            ${items.map((it, idx) => `
+              <label class="flex items-start gap-2 p-2 rounded-xl bg-slate-50/90 hover:bg-indigo-50/40 border border-slate-100 cursor-pointer transition">
+                <input type="checkbox" ${it.done ? 'checked' : ''} onchange="toggleSubItem('${t.id}', '${it.id}')" class="mt-0.5 w-4 h-4 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500 shrink-0 cursor-pointer" />
+                <span class="text-xs sm:text-sm leading-snug ${it.done ? 'line-through text-slate-400' : 'text-slate-800 font-medium'}">${idx + 1}. ${escapeHtml(it.text)}</span>
+              </label>
+            `).join('')}
+          </div>
+          ${t.note ? `<p class="text-xs text-slate-500 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100"><i class="fa-regular fa-note-sticky text-slate-400 mr-1"></i>หมายเหตุ: ${escapeHtml(t.note)}</p>` : ''}
+        </div>
+      `;
+    }
+
+    function startRepairFromSurvey(taskId) {
+      const proj = getActiveProject();
+      const t = proj.tasks.find(x => x.id === taskId);
+      if (!t) return;
+      t.status = 'pending';
+      t.step = 1;
+      saveData();
+      renderAll();
+      showToast('ย้ายรายการเข้าสู่ "รอดำเนินการ" เพื่อเริ่มติดตามงานแล้ว', 'success');
+    }
+
+    function copySurveyOnlyLine() {
+      const proj = getActiveProject();
+      if (!proj) return;
+      const surveyTasks = (proj.tasks || []).filter(t => t.status === 'survey');
+      if (!surveyTasks.length) {
+        showToast('ไม่มีรายการเข้าสำรวจหน้างานสำหรับคัดลอก', 'info');
+        return;
+      }
+      const lines = [
+        `📋 รวมรายการเข้าสำรวจหน้างาน (${formatThaiDate(getTodayISO())})`,
+        `📍 โครงการ: ${proj.name}${proj.location ? ' (' + proj.location + ')' : ''}`,
+        `รวมทั้งหมด ${surveyTasks.length} จุดที่ต้องซ่อม`,
+        `────────────────────`
+      ];
+      surveyTasks.forEach((t, i) => {
+        lines.push(`\n${i + 1}. [${t.zone}] | ช่าง: ${t.technician} | ผู้ตรวจ: ${t.inspector} (${formatThaiDate(t.date)})`);
+        (t.items || []).forEach((it, idx) => lines.push(`   ${idx + 1}) ${it.text}`));
+        if (t.note) lines.push(`   หมายเหตุ: ${t.note}`);
+      });
+      copyText(lines.join('\n'), 'คัดลอกรายการสำรวจหน้างานส่ง LINE/ช่าง เรียบร้อยแล้ว!');
+    }
+
+    function statusToDefaultStep(status) {
+      if (status === 'completed') return 5;
+      if (status === 'waiting_check' || status === 'defect') return 4;
+      if (status === 'in_progress') return 3;
+      if (status === 'pending') return 2;
+      return 1;
+    }
+
+    function handleAddTask(e) {
+      e.preventDefault();
+      const proj = getActiveProject();
+      if (!proj) return;
+
+      const cleanItems = draftItems.add
+        .map(s => s.trim())
+        .filter(Boolean)
+        .map((text, idx) => ({ id: `i-${Date.now()}-${idx}`, text, done: false }));
+
+      if (cleanItems.length === 0) {
+        showToast('กรุณากรอกรายละเอียดจุดที่ต้องซ่อมอย่างน้อย 1 หัวข้อ', 'error');
+        return;
+      }
+
+      const status = document.getElementById('f-status').value;
+      if (status === 'completed') cleanItems.forEach(i => i.done = true);
+
+      const newTask = {
+        id: 't-' + Date.now(),
+        zone: document.getElementById('f-zone').value,
+        date: document.getElementById('f-date').value,
+        items: cleanItems,
+        note: document.getElementById('f-note').value.trim(),
+        technician: document.getElementById('f-tech').value.trim(),
+        inspector: document.getElementById('f-inspector').value.trim(),
+        status,
+        step: statusToDefaultStep(status),
+        defectNote: '',
+        defectDate: '',
+        photos: [...draftPhotos.add],
+        logs: []
+      };
+
+      proj.tasks.unshift(newTask);
+      saveData();
+
+      draftItems.add = [''];
+      renderFormItems('add');
+      document.getElementById('f-note').value = '';
+      document.getElementById('f-status').value = 'survey';
+      draftPhotos.add = [];
+      renderPhotoPreviews('add');
+      renderAll();
+      showToast('บันทึกรายการตรวจหน้างานเรียบร้อยแล้ว');
+    }
+
+    function openEditTaskModal(taskId) {
+      const proj = getActiveProject();
+      const t = proj.tasks.find(x => x.id === taskId);
+      if (!t) return;
+
+      document.getElementById('et-id').value = t.id;
+      initZoneDropdowns(undefined, t.zone);
+      document.getElementById('et-zone').value = t.zone;
+      document.getElementById('et-date').value = t.date;
+      document.getElementById('et-tech').value = t.technician;
+      document.getElementById('et-inspector').value = t.inspector;
+      document.getElementById('et-note').value = t.note || '';
+      document.getElementById('et-status').value = t.status;
+      draftItems.edit = (t.items && t.items.length) ? t.items.map(i => i.text) : [''];
+      renderFormItems('edit');
+      draftPhotos.edit = [...(t.photos || [])];
+      renderPhotoPreviews('edit');
+      toggleInlineZone('edit', false);
+      openModal('edit-task-modal');
+    }
+
+    function handleEditTaskSubmit(e) {
+      e.preventDefault();
+      const proj = getActiveProject();
+      const id = document.getElementById('et-id').value;
+      const t = proj.tasks.find(x => x.id === id);
+      if (!t) return;
+
+      const oldItems = t.items || [];
+      const newItems = draftItems.edit
+        .map(s => s.trim())
+        .filter(Boolean)
+        .map((text, idx) => ({
+          id: oldItems[idx] ? oldItems[idx].id : `i-${Date.now()}-${idx}`,
+          text,
+          done: oldItems[idx] ? oldItems[idx].done : false
+        }));
+
+      if (newItems.length === 0) {
+        showToast('กรุณากรอกรายละเอียดอย่างน้อย 1 หัวข้อ', 'error');
+        return;
+      }
+
+      t.zone = document.getElementById('et-zone').value;
+      t.date = document.getElementById('et-date').value;
+      t.items = newItems;
+      t.note = document.getElementById('et-note').value.trim();
+      t.technician = document.getElementById('et-tech').value.trim();
+      t.inspector = document.getElementById('et-inspector').value.trim();
+      t.status = document.getElementById('et-status').value;
+      if (t.status === 'completed') t.step = 5;
+      t.photos = [...draftPhotos.edit];
+
+      saveData();
+      closeModal('edit-task-modal');
+      renderAll();
+      showToast('บันทึกการแก้ไขเรียบร้อยแล้ว');
+    }
+
+    function confirmDeleteTask(taskId) {
+      openConfirmModal('ลบรายการงานนี้?', 'ต้องการลบรายการนี้รวมถึงประวัติความคืบหน้าทั้งหมดใช่หรือไม่?', () => {
+        const proj = getActiveProject();
+        proj.tasks = proj.tasks.filter(t => t.id !== taskId);
+        saveData();
+        renderAll();
+        showToast('ลบรายการงานเรียบร้อยแล้ว');
+      });
+    }
+
+    function renderTab1() {
+      const proj = getActiveProject();
+      const tasks = proj ? (proj.tasks || []) : [];
+      document.getElementById('tab1-count-badge').textContent = `${tasks.length} รายการ`;
+
+      const container = document.getElementById('tab1-list');
+      if (tasks.length === 0) {
+        container.innerHTML = `<div class="text-center py-12 text-slate-400 text-sm">ยังไม่มีรายการตรวจหน้างาน เริ่มบันทึกจากฟอร์มทางด้านซ้าย</div>`;
+        return;
+      }
+
+      container.innerHTML = tasks.map(t => {
+        const st = STATUS_MAP[t.status] || STATUS_MAP.pending;
+        const photosHtml = (t.photos && t.photos.length)
+          ? `<div class="flex flex-wrap gap-2 mt-2.5">${t.photos.map(src => `<img src="${src}" onclick="openLightbox('${src}')" class="w-14 h-14 rounded-lg object-cover border border-slate-200 cursor-pointer hover:opacity-90" alt="หน้างาน" />`).join('')}</div>`
+          : '';
+
+        return `
+          <div class="p-4 rounded-2xl border ${t.status === 'survey' ? 'border-indigo-200 bg-indigo-50/20' : 'border-slate-200 bg-white'} hover:border-indigo-300 shadow-sm transition space-y-2">
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex flex-wrap items-center gap-1.5">
+                <span class="text-xs font-bold px-2.5 py-0.5 rounded-lg bg-indigo-50 text-indigo-700">${escapeHtml(t.zone)}</span>
+                <span class="text-xs font-semibold px-2.5 py-0.5 rounded-lg border ${st.badge}">${st.label}</span>
+                <span class="text-xs text-slate-400">ตรวจ: ${formatThaiDate(t.date)}</span>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                ${t.status === 'survey' ? `<button type="button" onclick="startRepairFromSurvey('${t.id}')" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-semibold transition" title="ย้ายไปรอดำเนินการ">เริ่มงาน</button>` : ''}
+                <button type="button" onclick="openEditTaskModal('${t.id}')" class="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-indigo-600" title="แก้ไข"><i class="fa-regular fa-pen-to-square"></i></button>
+                <button type="button" onclick="confirmDeleteTask('${t.id}')" class="p-1.5 rounded-lg text-slate-500 hover:bg-rose-50 hover:text-rose-600" title="ลบ"><i class="fa-regular fa-trash-can"></i></button>
+              </div>
+            </div>
+            ${renderTaskItemsHtml(t, false)}
+            ${photosHtml}
+            <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 pt-2 border-t border-slate-100">
+              <span>👷 ช่าง: <strong class="text-slate-700">${escapeHtml(t.technician)}</strong></span>
+              <span>📋 ผู้ตรวจ: <strong class="text-slate-700">${escapeHtml(t.inspector)}</strong></span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // =========================================================
+    // 9. TAB 2: TRACKING STEPPER & TIMELINE
+    // =========================================================
+    function updateTaskStep(taskId, stepNum) {
+      const proj = getActiveProject();
+      const t = proj.tasks.find(x => x.id === taskId);
+      if (!t) return;
+
+      t.step = stepNum;
+      if (stepNum === 1 || stepNum === 2) t.status = 'pending';
+      else if (stepNum === 3) t.status = 'in_progress';
+      else if (stepNum === 4) t.status = t.status === 'defect' ? 'defect' : 'waiting_check';
+      else if (stepNum === 5) t.status = 'completed';
+
+      saveData();
+      renderAll();
+      const stepObj = STEPS.find(s => s.num === stepNum);
+      showToast(`อัปเดตเป็นขั้นตอนที่ ${stepNum}: ${stepObj ? stepObj.label : ''}`);
+    }
+
+    function openLogModal(taskId) {
+      const proj = getActiveProject();
+      const t = proj.tasks.find(x => x.id === taskId);
+      if (!t) return;
+      document.getElementById('log-task-id').value = t.id;
+      document.getElementById('log-task-preview').textContent = `[${t.zone}] ${getTaskSummaryText(t)}`;
+      document.getElementById('log-date').value = getTodayISO();
+      document.getElementById('log-author').value = t.inspector || '';
+      document.getElementById('log-note').value = '';
+      openModal('log-modal');
+    }
+
+    function handleAddLog(e) {
+      e.preventDefault();
+      const proj = getActiveProject();
+      const id = document.getElementById('log-task-id').value;
+      const t = proj.tasks.find(x => x.id === id);
+      if (!t) return;
+
+      t.logs = t.logs || [];
+      t.logs.unshift({
+        id: 'l-' + Date.now(),
+        date: document.getElementById('log-date').value,
+        author: document.getElementById('log-author').value.trim(),
+        note: document.getElementById('log-note').value.trim()
+      });
+      saveData();
+      closeModal('log-modal');
+      renderTab2();
+      showToast('เพิ่มบันทึกความคืบหน้าแล้ว');
+    }
+
+    function deleteLog(taskId, logId) {
+      const proj = getActiveProject();
+      const t = proj.tasks.find(x => x.id === taskId);
+      if (!t) return;
+      t.logs = (t.logs || []).filter(l => l.id !== logId);
+      saveData();
+      renderTab2();
+      showToast('ลบบันทึกความคืบหน้าแล้ว', 'info');
+    }
+
+    function renderTab2() {
+      const proj = getActiveProject();
+      const allTasks = proj ? (proj.tasks || []) : [];
+      const surveyCount = allTasks.filter(t => t.status === 'survey').length;
+
+      // แสดงแถบแจ้งเตือนจำนวนรายการสำรวจหน้างาน (ไม่เอามาปนใน Stepper)
+      const banner = document.getElementById('tab2-survey-banner');
+      if (surveyCount > 0) {
+        document.getElementById('tab2-survey-banner-text').textContent = `มีรายการ "เข้าสำรวจหน้างาน" จำนวน ${surveyCount} รายการ แสดงโชว์รวมอยู่ในหน้าเช็คลิสต์ & สรุปทีม`;
+        banner.classList.remove('hidden');
+      } else {
+        banner.classList.add('hidden');
+      }
+
+      const zoneFilter = document.getElementById('tab2-zone-filter').value;
+      const tasks = allTasks.filter(t => t.status !== 'survey' && (zoneFilter === 'all' || t.zone === zoneFilter));
+      const container = document.getElementById('tab2-list');
+
+      if (tasks.length === 0) {
+        container.innerHTML = `<div class="bg-white rounded-2xl border border-slate-200 p-10 text-center text-slate-400 text-sm">ยังไม่มีรายการที่เริ่มดำเนินการซ่อมในโซนที่เลือก</div>`;
+        return;
+      }
+
+      container.innerHTML = tasks.map(t => {
+        const st = STATUS_MAP[t.status] || STATUS_MAP.pending;
+        const currentStep = t.step || 1;
+
+        const stepperHtml = STEPS.map(s => {
+          const isDone = currentStep > s.num || (currentStep === 5 && s.num === 5);
+          const isActive = currentStep === s.num && currentStep < 5;
+          const circleCls = isDone
+            ? 'bg-emerald-500 text-white border-emerald-500'
+            : (isActive ? 'bg-indigo-600 text-white border-indigo-600 ring-4 ring-indigo-100' : 'bg-slate-100 text-slate-500 border-slate-300 hover:border-indigo-400');
+          const txtCls = isDone ? 'text-emerald-700 font-medium' : (isActive ? 'text-indigo-700 font-bold' : 'text-slate-500');
+          return `
+            <button type="button" onclick="updateTaskStep('${t.id}', ${s.num})" class="flex flex-col items-center focus:outline-none">
+              <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold transition ${circleCls}">${isDone ? '✓' : s.num}</div>
+              <span class="text-[10px] sm:text-xs mt-1.5 text-center leading-tight ${txtCls}">${s.label}</span>
+            </button>
+          `;
+        }).join('');
+
+        const sortedLogs = [...(t.logs || [])].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+        const logsHtml = sortedLogs.length > 0 ? sortedLogs.map(l => `
+          <div class="relative pl-5 pb-3 border-l-2 border-indigo-100 last:pb-0">
+            <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 absolute -left-[6px] top-1.5 ring-4 ring-white"></span>
+            <div class="bg-slate-50 rounded-xl p-3 border border-slate-200/70">
+              <div class="flex items-center justify-between gap-2 text-[11px] text-slate-500 mb-1">
+                <div>
+                  <span class="font-bold text-indigo-700">${formatThaiDate(l.date)}</span>
+                  <span class="ml-2">โดย: ${escapeHtml(l.author || 'ทีมงาน')}</span>
+                </div>
+                <button type="button" onclick="deleteLog('${t.id}', '${l.id}')" class="text-slate-400 hover:text-rose-500">✕</button>
+              </div>
+              <p class="text-xs sm:text-sm text-slate-700">${escapeHtml(l.note)}</p>
+            </div>
+          </div>
+        `).join('') : `<p class="text-xs text-slate-400 italic">ยังไม่มีบันทึกความคืบหน้า</p>`;
+
+        return `
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6 space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+              <div class="space-y-1.5 flex-1">
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <span class="text-xs font-bold px-2.5 py-0.5 rounded-lg bg-indigo-50 text-indigo-700">${escapeHtml(t.zone)}</span>
+                  <span class="text-xs font-semibold px-2.5 py-0.5 rounded-lg border ${st.badge}">${st.label}</span>
+                  <span class="text-xs text-slate-400">วันที่ตรวจ: ${formatThaiDate(t.date)}</span>
+                </div>
+                ${renderTaskItemsHtml(t, true)}
+                <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 pt-1">
+                  <span>👷 ช่าง: <strong class="text-slate-700">${escapeHtml(t.technician)}</strong></span>
+                  <span>📋 ผู้ตรวจ: <strong class="text-slate-700">${escapeHtml(t.inspector)}</strong></span>
+                </div>
+              </div>
+              <button type="button" onclick="openLogModal('${t.id}')" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm transition flex items-center justify-center gap-1.5 shrink-0">
+                <i class="fa-solid fa-plus"></i>
+                <span>บันทึกความคืบหน้า (Log)</span>
+              </button>
+            </div>
+
+            <!-- 5-Step Interactive Stepper -->
+            <div class="py-3 px-2 bg-slate-50 rounded-xl border border-slate-100 grid grid-cols-5 gap-1">
+              ${stepperHtml}
+            </div>
+
+            <!-- Timeline -->
+            <div>
+              <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2.5">ไทม์ไลน์ความคืบหน้า</h4>
+              <div class="ml-1">${logsHtml}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // =========================================================
+    // 10. TAB 3: CHECKLIST, DEFECTS, LINE COPY & PDF PRINT
+    // =========================================================
+    function markTaskCompleted(taskId) {
+      const proj = getActiveProject();
+      const t = proj.tasks.find(x => x.id === taskId);
+      if (!t) return;
+      t.status = 'completed';
+      t.step = 5;
+      (t.items || []).forEach(i => i.done = true);
+      saveData();
+      renderAll();
+      showToast('เปลี่ยนสถานะเป็น "เสร็จแล้ว" เรียบร้อย');
+    }
+
+    function openDefectModal(taskId) {
+      const proj = getActiveProject();
+      const t = proj.tasks.find(x => x.id === taskId);
+      if (!t) return;
+      document.getElementById('defect-task-id').value = t.id;
+      document.getElementById('defect-task-preview').textContent = `[${t.zone}] ${getTaskSummaryText(t)}`;
+      document.getElementById('defect-date').value = t.defectDate || getTodayISO();
+      document.getElementById('defect-note').value = t.defectNote || '';
+      openModal('defect-modal');
+    }
+
+    function handleDefectSubmit(e) {
+      e.preventDefault();
+      const proj = getActiveProject();
+      const id = document.getElementById('defect-task-id').value;
+      const t = proj.tasks.find(x => x.id === id);
+      if (!t) return;
+
+      t.status = 'defect';
+      t.step = 4;
+      t.defectDate = document.getElementById('defect-date').value;
+      t.defectNote = document.getElementById('defect-note').value.trim();
+      t.logs = t.logs || [];
+      t.logs.unshift({
+        id: 'l-' + Date.now(),
+        date: t.defectDate,
+        author: t.inspector || 'ทีมงาน',
+        note: `⚠️ แจ้งจุดต้องแก้ไข (Defect): ${t.defectNote}`
+      });
+
+      saveData();
+      closeModal('defect-modal');
+      renderAll();
+      showToast('บันทึกจุดที่ต้องแก้ไขเพิ่มเติมแล้ว');
+    }
+
+    function renderTab3() {
+      const proj = getActiveProject();
+      const tasks = proj ? (proj.tasks || []) : [];
+
+      const q = (document.getElementById('tab3-search').value || '').trim().toLowerCase();
+      const stF = document.getElementById('tab3-status-filter').value;
+      const zF = document.getElementById('tab3-zone-filter').value;
+
+      const matchQueryAndZone = (t) => {
+        if (zF !== 'all' && t.zone !== zF) return false;
+        if (q) {
+          const hay = `${t.zone} ${getTaskSummaryText(t)} ${t.technician} ${t.inspector} ${t.note || ''} ${t.defectNote || ''}`.toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      };
+
+      const surveyList = tasks.filter(t => t.status === 'survey' && matchQueryAndZone(t));
+      const repairList = tasks.filter(t => t.status !== 'survey' && (stF === 'all' || t.status === stF) && matchQueryAndZone(t));
+
+      const surveySection = document.getElementById('tab3-survey-section');
+      const repairSection = document.getElementById('tab3-repair-section');
+
+      // 1) ส่วนรวมรายการเข้าสำรวจหน้างาน (แสดงโชว์เฉยๆ)
+      const showSurvey = (stF === 'all' && surveyList.length > 0) || stF === 'survey';
+      if (showSurvey) {
+        surveySection.classList.remove('hidden');
+        surveySection.innerHTML = `
+          <div class="rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50/70 via-white to-slate-50 p-4 sm:p-5 space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-indigo-100">
+              <div>
+                <h4 class="text-sm sm:text-base font-bold text-indigo-900 flex items-center gap-2">
+                  <i class="fa-solid fa-clipboard-list text-indigo-600"></i>
+                  <span>รวมรายการเข้าสำรวจหน้างาน (แสดงโชว์รวมจุดที่ช่างต้องซ่อมในโปรเจกต์)</span>
+                </h4>
+                <p class="text-xs text-indigo-700/80 mt-0.5">แสดงสรุปรวมรายการที่ต้องซ่อมทั้งหมด ${surveyList.length} จุด • ไม่นับรวมในเปอร์เซ็นต์ความคืบหน้า</p>
+              </div>
+              <button type="button" onclick="copySurveyOnlyLine()" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm transition flex items-center justify-center gap-1.5 shrink-0">
+                <i class="fa-brands fa-line text-sm"></i>
+                <span>คัดลอกรายการสำรวจส่ง LINE/ช่าง</span>
+              </button>
+            </div>
+            ${surveyList.length === 0 ? `
+              <div class="text-center py-6 text-slate-400 text-sm">ไม่พบรายการเข้าสำรวจหน้างานที่ตรงกับเงื่อนไข</div>
+            ` : `
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                ${surveyList.map((t, idx) => {
+                  const photosHtml = (t.photos && t.photos.length)
+                    ? `<div class="flex flex-wrap gap-2 pt-1">${t.photos.map(src => `<img src="${src}" onclick="openLightbox('${src}')" class="w-14 h-14 rounded-lg object-cover border border-indigo-200 cursor-pointer hover:opacity-90" alt="รูปสำรวจ" />`).join('')}</div>`
+                    : '';
+                  return `
+                    <div class="bg-white rounded-2xl border border-indigo-100 p-4 shadow-sm space-y-2.5 flex flex-col justify-between">
+                      <div class="space-y-2">
+                        <div class="flex items-start justify-between gap-2">
+                          <div class="flex flex-wrap items-center gap-1.5">
+                            <span class="w-5 h-5 rounded-full bg-indigo-600 text-white text-[11px] font-bold flex items-center justify-center shrink-0">${idx + 1}</span>
+                            <span class="text-xs font-bold px-2.5 py-0.5 rounded-lg bg-indigo-50 text-indigo-700">${escapeHtml(t.zone)}</span>
+                            <span class="text-xs text-slate-400">${formatThaiDate(t.date)}</span>
+                          </div>
+                          <div class="flex items-center gap-1 shrink-0">
+                            <button type="button" onclick="openEditTaskModal('${t.id}')" class="p-1 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-indigo-600 text-xs" title="แก้ไข"><i class="fa-regular fa-pen-to-square"></i></button>
+                            <button type="button" onclick="confirmDeleteTask('${t.id}')" class="p-1 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 text-xs" title="ลบ"><i class="fa-regular fa-trash-can"></i></button>
+                          </div>
+                        </div>
+                        ${renderTaskItemsHtml(t, false)}
+                        ${photosHtml}
+                      </div>
+                      <div class="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-slate-100 text-xs text-slate-500">
+                        <div class="flex flex-wrap gap-x-3 gap-y-0.5">
+                          <span>👷 <strong class="text-slate-700">${escapeHtml(t.technician)}</strong></span>
+                          <span>📋 <strong class="text-slate-700">${escapeHtml(t.inspector)}</strong></span>
+                        </div>
+                        <button type="button" onclick="startRepairFromSurvey('${t.id}')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-600 hover:text-white text-slate-700 text-[11px] font-semibold transition">
+                          เริ่มงาน (ย้ายไปรอดำเนินการ) →
+                        </button>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            `}
+          </div>
+        `;
+      } else {
+        surveySection.classList.add('hidden');
+        surveySection.innerHTML = '';
+      }
+
+      // 2) ส่วนเช็คลิสต์ติดตามงานซ่อมจริง
+      if (stF === 'survey') {
+        repairSection.classList.add('hidden');
+        return;
+      }
+      repairSection.classList.remove('hidden');
+      document.getElementById('tab3-repair-count').textContent = `${repairList.length} รายการ`;
+
+      const container = document.getElementById('tab3-checklist');
+      if (repairList.length === 0) {
+        container.innerHTML = `<div class="text-center py-8 text-slate-400 text-sm">ไม่พบรายการงานซ่อมที่ตรงกับเงื่อนไขการค้นหา</div>`;
+        return;
+      }
+
+      container.innerHTML = repairList.map(t => {
+        const st = STATUS_MAP[t.status] || STATUS_MAP.pending;
+        return `
+          <div class="p-4 rounded-2xl border ${t.status === 'defect' ? 'border-rose-300 bg-rose-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div class="space-y-1.5 flex-1">
+              <div class="flex flex-wrap items-center gap-1.5">
+                <span class="text-xs font-bold px-2.5 py-0.5 rounded-lg bg-indigo-50 text-indigo-700">${escapeHtml(t.zone)}</span>
+                <span class="text-xs font-semibold px-2.5 py-0.5 rounded-lg border ${st.badge}">${st.label}</span>
+                <span class="text-xs text-slate-400">วันที่ตรวจ: ${formatThaiDate(t.date)}</span>
+              </div>
+              ${renderTaskItemsHtml(t, false)}
+              <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 pt-1">
+                <span>👷 ช่าง: <strong class="text-slate-700">${escapeHtml(t.technician)}</strong></span>
+                <span>📋 ผู้ตรวจ: <strong class="text-slate-700">${escapeHtml(t.inspector)}</strong></span>
+              </div>
+              ${t.defectNote ? `<div class="p-2.5 rounded-xl bg-rose-100/80 border border-rose-300 text-xs text-rose-900"><strong>⚠️ จุดต้องแก้ไข (${formatThaiDate(t.defectDate)}):</strong> ${escapeHtml(t.defectNote)}</div>` : ''}
+            </div>
+
+            <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0">
+              ${t.status !== 'completed' ? `
+                <button type="button" onclick="markTaskCompleted('${t.id}')" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition flex items-center gap-1.5">
+                  <i class="fa-solid fa-check"></i>
+                  <span>เสร็จแล้ว</span>
+                </button>
+              ` : `<span class="px-3 py-2 rounded-xl bg-emerald-100 text-emerald-800 text-xs font-bold">✓ ตรวจรับแล้ว</span>`}
+              <button type="button" onclick="openDefectModal('${t.id}')" class="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold transition">
+                ⚠️ แจ้งต้องแก้ไข/Defect
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function copyLineSummary() {
+      const proj = getActiveProject();
+      if (!proj) return;
+      const tasks = proj.tasks || [];
+      const survey = tasks.filter(t => t.status === 'survey');
+      const repairTasks = tasks.filter(t => t.status !== 'survey');
+      const done = repairTasks.filter(t => t.status === 'completed');
+      const defect = repairTasks.filter(t => t.status === 'defect');
+      const active = repairTasks.filter(t => t.status !== 'completed' && t.status !== 'defect');
+      const pct = repairTasks.length ? Math.round((done.length / repairTasks.length) * 100) : 0;
+
+      const formatItemsForLine = (t) => (t.items || []).map(it => `   ${it.done ? '✅' : '⬜'} ${it.text}`).join('\n');
+
+      const lines = [
+        `🏠 สรุปงานช่างรีโนเวทประจำวัน (${formatThaiDate(getTodayISO())})`,
+        `📍 โครงการ: ${proj.name}${proj.location ? ' (' + proj.location + ')' : ''}`,
+        `📊 ความคืบหน้างานซ่อม: ${pct}% (เสร็จแล้ว ${done.length}/${repairTasks.length} งาน)`,
+        `────────────────────`
+      ];
+
+      if (survey.length > 0) {
+        lines.push(`\n📋 รายการเข้าสำรวจหน้างาน (รวมจุดที่ต้องซ่อม ${survey.length} จุด)`);
+        survey.forEach((t, i) => {
+          lines.push(`${i + 1}. [${t.zone}] (ช่าง: ${t.technician})`);
+          (t.items || []).forEach((it, idx) => lines.push(`   ${idx + 1}) ${it.text}`));
+        });
+        lines.push(`────────────────────`);
+      }
+
+      lines.push(`\n✅ งานซ่อมที่เสร็จแล้ว (${done.length})`);
+      if (!done.length) lines.push('- ยังไม่มี');
+      else done.forEach((t, i) => lines.push(`${i + 1}. [${t.zone}] (ช่าง: ${t.technician})\n${formatItemsForLine(t)}`));
+
+      lines.push(`\n🔧 รอดำเนินการ / กำลังทำ / รอตรวจ (${active.length})`);
+      if (!active.length) lines.push('- ไม่มีงานค้าง');
+      else active.forEach((t, i) => lines.push(`${i + 1}. [${t.zone}] | สถานะ: ${(STATUS_MAP[t.status] || STATUS_MAP.pending).label} (ช่าง: ${t.technician})\n${formatItemsForLine(t)}`));
+
+      lines.push(`\n⚠️ ต้องแก้ไขเพิ่มเติม / Defect (${defect.length})`);
+      if (!defect.length) lines.push('- ไม่มี');
+      else defect.forEach((t, i) => {
+        lines.push(`${i + 1}. [${t.zone}] (ช่าง: ${t.technician})\n${formatItemsForLine(t)}`);
+        if (t.defectNote) lines.push(`   ↳ จุดต้องแก้: ${t.defectNote}`);
+      });
+
+      copyText(lines.join('\n'), 'คัดลอกสรุปส่ง LINE ทีมเรียบร้อยแล้ว!');
+    }
+
+    function printPDFReport() {
+      const proj = getActiveProject();
+      if (!proj) return;
+      const tasks = proj.tasks || [];
+      const surveyTasks = tasks.filter(t => t.status === 'survey');
+      const repairTasks = tasks.filter(t => t.status !== 'survey');
+      const doneCount = repairTasks.filter(t => t.status === 'completed').length;
+      const pct = repairTasks.length ? Math.round((doneCount / repairTasks.length) * 100) : 0;
+
+      document.getElementById('print-report-container').innerHTML = `
+        <div class="border-b-2 border-slate-800 pb-3 mb-4">
+          <h1 class="text-xl font-bold text-slate-900">รายงานสรุปและติดตามงานช่างรีโนเวท</h1>
+          <p class="text-sm text-slate-700 mt-1"><strong>โครงการ:</strong> ${escapeHtml(proj.name)} ${proj.location ? '(' + escapeHtml(proj.location) + ')' : ''}</p>
+          <p class="text-xs text-slate-500">วันที่พิมพ์: ${formatThaiDate(getTodayISO())} • ความคืบหน้างานซ่อม: ${pct}% (${doneCount}/${repairTasks.length} งาน) • รายการสำรวจหน้างาน: ${surveyTasks.length} จุด</p>
+        </div>
+
+        ${surveyTasks.length > 0 ? `
+          <div class="mb-5">
+            <h2 class="text-sm font-bold text-slate-900 mb-2">1. รายการเข้าสำรวจหน้างาน (รวมจุดที่ต้องซ่อมในโปรเจกต์)</h2>
+            <table class="w-full border-collapse border border-slate-300 text-xs">
+              <thead>
+                <tr class="bg-slate-100">
+                  <th class="border border-slate-300 p-2 text-left w-8">#</th>
+                  <th class="border border-slate-300 p-2 text-left">โซน / ห้อง</th>
+                  <th class="border border-slate-300 p-2 text-left">รายละเอียดจุดที่ต้องซ่อม</th>
+                  <th class="border border-slate-300 p-2 text-left">ช่าง / ผู้ตรวจ</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${surveyTasks.map((t, i) => `
+                  <tr>
+                    <td class="border border-slate-300 p-2 align-top">${i + 1}</td>
+                    <td class="border border-slate-300 p-2 align-top font-semibold">${escapeHtml(t.zone)}<br/><span class="font-normal text-slate-500">${formatThaiDate(t.date)}</span></td>
+                    <td class="border border-slate-300 p-2 align-top">
+                      ${(t.items || []).map((it, idx) => `<div>${idx + 1}. ${escapeHtml(it.text)}</div>`).join('')}
+                      ${t.note ? `<div class="text-slate-500 mt-1">หมายเหตุ: ${escapeHtml(t.note)}</div>` : ''}
+                    </td>
+                    <td class="border border-slate-300 p-2 align-top">ช่าง: ${escapeHtml(t.technician)}<br/>ผู้ตรวจ: ${escapeHtml(t.inspector)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        ` : ''}
+
+        <div>
+          <h2 class="text-sm font-bold text-slate-900 mb-2">${surveyTasks.length > 0 ? '2. ' : ''}สถานะการดำเนินงานซ่อม (${repairTasks.length} รายการ)</h2>
+          <table class="w-full border-collapse border border-slate-300 text-xs">
+            <thead>
+              <tr class="bg-slate-100">
+                <th class="border border-slate-300 p-2 text-left w-8">#</th>
+                <th class="border border-slate-300 p-2 text-left">โซน / ห้อง</th>
+                <th class="border border-slate-300 p-2 text-left">รายละเอียดงานซ่อม / แก้ไข</th>
+                <th class="border border-slate-300 p-2 text-left">ช่าง / ผู้ตรวจ</th>
+                <th class="border border-slate-300 p-2 text-center">สถานะ</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${repairTasks.map((t, i) => `
+                <tr>
+                  <td class="border border-slate-300 p-2 align-top">${i + 1}</td>
+                  <td class="border border-slate-300 p-2 align-top font-semibold">${escapeHtml(t.zone)}<br/><span class="font-normal text-slate-500">${formatThaiDate(t.date)}</span></td>
+                  <td class="border border-slate-300 p-2 align-top">
+                    ${(t.items || []).map(it => `<div>${it.done ? '✅' : '⬜'} ${escapeHtml(it.text)}</div>`).join('')}
+                    ${t.note ? `<div class="text-slate-500 mt-1">หมายเหตุ: ${escapeHtml(t.note)}</div>` : ''}
+                    ${t.defectNote ? `<div class="text-rose-700 font-semibold mt-1">⚠️ Defect: ${escapeHtml(t.defectNote)}</div>` : ''}
+                  </td>
+                  <td class="border border-slate-300 p-2 align-top">ช่าง: ${escapeHtml(t.technician)}<br/>ผู้ตรวจ: ${escapeHtml(t.inspector)}</td>
+                  <td class="border border-slate-300 p-2 align-top text-center font-semibold">${(STATUS_MAP[t.status] || STATUS_MAP.pending).label}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+      window.print();
+    }
+
+    // =========================================================
+    // 11. SETTINGS, JSON BACKUP & GOOGLE SHEETS SYNC
+    // =========================================================
+    function openSettingsModal() {
+      document.getElementById('gas-url-input').value = appSettings.gasUrl || '';
+      openModal('settings-modal');
+    }
+
+    function saveGasUrl() {
+      appSettings.gasUrl = document.getElementById('gas-url-input').value.trim();
+      saveSettings();
+      showToast('บันทึก Google Apps Script URL เรียบร้อยแล้ว');
+    }
+
+    function exportJSON() {
+      const blob = new Blob([JSON.stringify(appState, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `renovation-tracker-${getTodayISO()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('ดาวน์โหลดไฟล์สำรอง JSON แล้ว');
+    }
+
+    function importJSON(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const parsed = JSON.parse(ev.target.result);
+          if (!parsed || !Array.isArray(parsed.projects)) throw new Error();
+          openConfirmModal('นำเข้าข้อมูล JSON?', `พบ ${parsed.projects.length} โครงการ ต้องการแทนที่ข้อมูลปัจจุบันใช่หรือไม่?`, () => {
+            appState = normalizeState(parsed);
+            saveData();
+            initZoneDropdowns();
+            closeModal('settings-modal');
+            renderAll();
+            showToast('นำเข้าข้อมูลเรียบร้อยแล้ว');
+          });
+        } catch {
+          showToast('ไฟล์ JSON ไม่ถูกต้อง', 'error');
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    }
+
+    async function syncGoogleSheets(direction) {
+      const url = document.getElementById('gas-url-input').value.trim();
+      if (!url) { showToast('กรุณากรอก Google Apps Script URL ก่อน', 'error'); return; }
+      appSettings.gasUrl = url;
+      saveSettings();
+      try {
+        if (direction === 'push') {
+          showToast('กำลังส่งข้อมูลขึ้น Google Sheets...', 'info');
+          const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'save', data: appState }) });
+          if (!res.ok) throw new Error();
+          showToast('ส่งข้อมูลขึ้น Google Sheets สำเร็จ!');
+        } else {
+          showToast('กำลังดึงข้อมูลจาก Google Sheets...', 'info');
+          const sep = url.includes('?') ? '&' : '?';
+          const res = await fetch(`${url}${sep}action=load`);
+          if (!res.ok) throw new Error();
+          const remote = await res.json();
+          if (remote && Array.isArray(remote.projects)) {
+            appState = normalizeState(remote);
+            saveData();
+            initZoneDropdowns();
+            closeModal('settings-modal');
+            renderAll();
+            showToast('ดึงข้อมูลจาก Google Sheets สำเร็จ!');
+          } else throw new Error();
+        }
+      } catch {
+        showToast('เชื่อมต่อไม่สำเร็จ กรุณาตรวจสอบ URL หรือสิทธิ์ Web App', 'error');
+      }
+    }
+
+    function confirmResetSample() {
+      openConfirmModal('รีเซ็ตเป็นข้อมูลตัวอย่าง?', 'ข้อมูลปัจจุบันทั้งหมดจะถูกแทนที่ด้วยข้อมูลตัวอย่างเริ่มต้น', () => {
+        appState = getSampleData();
+        saveData();
+        initZoneDropdowns();
+        closeModal('settings-modal');
+        renderAll();
+        showToast('รีเซ็ตเป็นข้อมูลตัวอย่างแล้ว');
+      });
+    }
+
+    // =========================================================
+    // 12. MASTER RENDER & INITIALIZATION
+    // =========================================================
+    function renderAll() {
+      renderProjectSelector();
+      renderDashboard();
+      renderTab1();
+      renderTab2();
+      renderTab3();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initZoneDropdowns();
+      renderFormItems('add');
+      document.getElementById('f-date').value = getTodayISO();
+      switchTab(1);
+    });
+  </script>
+</body>
+</html>
